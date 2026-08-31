@@ -1,0 +1,41 @@
+services:
+  slam:
+    build:
+      context: .
+    image: robot-slam:noetic
+    environment:
+      # Deliberately empty rather than ${DISPLAY}: this service is the headless
+      # one, and inheriting a host DISPLAY would make the entrypoint skip Xvfb
+      # and send Gazebo at the host X server instead. Use the `ui` profile for
+      # a viewable session.
+      DISPLAY: ""
+      TURTLEBOT3_MODEL: waffle_pi
+    # A bind mount keeps host ownership, so the image's uid 10001 cannot write
+    # to ./data on Linux. Override to the invoking user there:
+    #   HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose up
+    # macOS Docker Desktop maps ownership itself and needs no override.
+    user: "${HOST_UID:-10001}:${HOST_GID:-10001}"
+    volumes:
+      - ./data:/data
+    # Gazebo's rendering path outgrows the 64 MB default.
+    shm_size: "1gb"
+    init: true
+
+  ui:
+    build:
+      context: .
+    image: robot-slam:noetic
+    profiles: ["ui"]
+    environment:
+      DISPLAY: ""
+      ENABLE_NOVNC: "1"
+      TURTLEBOT3_MODEL: waffle_pi
+    user: "${HOST_UID:-10001}:${HOST_GID:-10001}"
+    ports:
+      # Loopback only: x11vnc runs with -nopw.
+      - "127.0.0.1:6080:6080"
+    volumes:
+      - ./data:/data
+    shm_size: "1gb"
+    command: ["roslaunch", "robot_slam", "robot_slam.launch", "gui:=true"]
+    init: true

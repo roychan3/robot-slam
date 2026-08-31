@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>robot_slam</name>
+  <version>0.1.0</version>
+  <description>Indoor TurtleBot3 Gazebo simulation with gmapping and 3D point-cloud mapping.</description>
+
+  <maintainer email="maintainer@example.com">robot-slam maintainers</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <exec_depend>gazebo_ros</exec_depend>
+  <exec_depend>gmapping</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>octomap_server</exec_depend>
+  <exec_depend>pcl_ros</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>teleop_twist_keyboard</exec_depend>
+  <exec_depend>turtlebot3_description</exec_depend>
+  <exec_depend>xacro</exec_depend>
+
+  <export/>
+</package>

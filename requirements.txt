@@ -1,2 +1,1 @@
-# Runtime dependencies. Nothing is pinned yet — add packages here so the
-# Docker image and a local virtualenv install the same set.
+# No host Python dependencies. ROS and simulation dependencies live in Docker.

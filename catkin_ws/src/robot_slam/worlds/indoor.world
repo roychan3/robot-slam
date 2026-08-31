@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <world name="robot_slam_indoor">
+    <gravity>0 0 -9.81</gravity>
+    <physics name="ode" type="ode">
+      <max_step_size>0.002</max_step_size>
+      <real_time_update_rate>500</real_time_update_rate>
+    </physics>
+    <scene>
+      <ambient>0.55 0.55 0.55 1</ambient>
+      <background>0.75 0.80 0.86 1</background>
+      <shadows>true</shadows>
+    </scene>
+
+    <include><uri>model://sun</uri></include>
+    <include><uri>model://ground_plane</uri></include>
+
+    <model name="indoor_environment">
+      <static>true</static>
+
+      <!-- Ten-by-eight-metre shell. The door gaps and furniture create useful
+           lidar geometry instead of a featureless rectangular room. -->
+      <link name="structure">
+        <collision name="north_wall_collision"><pose>0 4 1.25 0 0 0</pose><geometry><box><size>10 0.12 2.5</size></box></geometry></collision>
+        <visual name="north_wall_visual"><pose>0 4 1.25 0 0 0</pose><geometry><box><size>10 0.12 2.5</size></box></geometry><material><ambient>0.88 0.88 0.84 1</ambient><diffuse>0.88 0.88 0.84 1</diffuse></material></visual>
+
+        <collision name="south_wall_collision"><pose>0 -4 1.25 0 0 0</pose><geometry><box><size>10 0.12 2.5</size></box></geometry></collision>
+        <visual name="south_wall_visual"><pose>0 -4 1.25 0 0 0</pose><geometry><box><size>10 0.12 2.5</size></box></geometry><material><ambient>0.88 0.88 0.84 1</ambient><diffuse>0.88 0.88 0.84 1</diffuse></material></visual>
+
+        <collision name="east_wall_collision"><pose>5 0 1.25 0 0 0</pose><geometry><box><size>0.12 8 2.5</size></box></geometry></collision>
+        <visual name="east_wall_visual"><pose>5 0 1.25 0 0 0</pose><geometry><box><size>0.12 8 2.5</size></box></geometry><material><ambient>0.84 0.88 0.91 1</ambient><diffuse>0.84 0.88 0.91 1</diffuse></material></visual>
+
+        <collision name="west_wall_collision"><pose>-5 0 1.25 0 0 0</pose><geometry><box><size>0.12 8 2.5</size></box></geometry></collision>
+        <visual name="west_wall_visual"><pose>-5 0 1.25 0 0 0</pose><geometry><box><size>0.12 8 2.5</size></box></geometry><material><ambient>0.84 0.88 0.91 1</ambient><diffuse>0.84 0.88 0.91 1</diffuse></material></visual>
+
+        <!-- Interior walls leave a 1.4 m central doorway and an open corridor. -->
+        <collision name="partition_a_collision"><pose>0.55 0.8 1.25 0 0 0</pose><geometry><box><size>0.12 4.8 2.5</size></box></geometry></collision>
+        <visual name="partition_a_visual"><pose>0.55 0.8 1.25 0 0 0</pose><geometry><box><size>0.12 4.8 2.5</size></box></geometry><material><ambient>0.92 0.90 0.82 1</ambient><diffuse>0.92 0.90 0.82 1</diffuse></material></visual>
+
+        <collision name="partition_b_collision"><pose>2.75 -1.0 1.25 0 0 0</pose><geometry><box><size>4.5 0.12 2.5</size></box></geometry></collision>
+        <visual name="partition_b_visual"><pose>2.75 -1.0 1.25 0 0 0</pose><geometry><box><size>4.5 0.12 2.5</size></box></geometry><material><ambient>0.92 0.90 0.82 1</ambient><diffuse>0.92 0.90 0.82 1</diffuse></material></visual>
+
+        <collision name="partition_c_collision"><pose>-2.9 1.2 1.25 0 0 0</pose><geometry><box><size>4.1 0.12 2.5</size></box></geometry></collision>
+        <visual name="partition_c_visual"><pose>-2.9 1.2 1.25 0 0 0</pose><geometry><box><size>4.1 0.12 2.5</size></box></geometry><material><ambient>0.92 0.90 0.82 1</ambient><diffuse>0.92 0.90 0.82 1</diffuse></material></visual>
+
+        <!-- Desk -->
+        <collision name="desk_top_collision"><pose>-2.8 2.7 0.72 0 0 0</pose><geometry><box><size>1.5 0.7 0.10</size></box></geometry></collision>
+        <visual name="desk_top_visual"><pose>-2.8 2.7 0.72 0 0 0</pose><geometry><box><size>1.5 0.7 0.10</size></box></geometry><material><ambient>0.40 0.19 0.08 1</ambient><diffuse>0.48 0.24 0.10 1</diffuse></material></visual>
+        <collision name="desk_leg_1_collision"><pose>-3.42 2.45 0.35 0 0 0</pose><geometry><box><size>0.10 0.10 0.70</size></box></geometry></collision>
+        <visual name="desk_leg_1_visual"><pose>-3.42 2.45 0.35 0 0 0</pose><geometry><box><size>0.10 0.10 0.70</size></box></geometry><material><ambient>0.28 0.28 0.28 1</ambient></material></visual>
+        <collision name="desk_leg_2_collision"><pose>-2.18 2.45 0.35 0 0 0</pose><geometry><box><size>0.10 0.10 0.70</size></box></geometry></collision>
+        <visual name="desk_leg_2_visual"><pose>-2.18 2.45 0.35 0 0 0</pose><geometry><box><size>0.10 0.10 0.70</size></box></geometry><material><ambient>0.28 0.28 0.28 1</ambient></material></visual>
+
+        <!-- Sofa -->
+        <collision name="sofa_base_collision"><pose>3.55 2.55 0.28 0 0 0</pose><geometry><box><size>1.8 0.72 0.56</size></box></geometry></collision>
+        <visual name="sofa_base_visual"><pose>3.55 2.55 0.28 0 0 0</pose><geometry><box><size>1.8 0.72 0.56</size></box></geometry><material><ambient>0.12 0.30 0.55 1</ambient><diffuse>0.15 0.36 0.65 1</diffuse></material></visual>
+        <collision name="sofa_back_collision"><pose>3.55 2.86 0.70 0 0 0</pose><geometry><box><size>1.8 0.15 0.85</size></box></geometry></collision>
+        <visual name="sofa_back_visual"><pose>3.55 2.86 0.70 0 0 0</pose><geometry><box><size>1.8 0.15 0.85</size></box></geometry><material><ambient>0.12 0.30 0.55 1</ambient><diffuse>0.15 0.36 0.65 1</diffuse></material></visual>
+
+        <!-- Kitchen island and two asymmetric boxes help scan matching. -->
+        <collision name="island_collision"><pose>2.8 -2.45 0.48 0 0 0</pose><geometry><box><size>1.7 0.8 0.96</size></box></geometry></collision>
+        <visual name="island_visual"><pose>2.8 -2.45 0.48 0 0 0</pose><geometry><box><size>1.7 0.8 0.96</size></box></geometry><material><ambient>0.66 0.67 0.62 1</ambient><diffuse>0.72 0.73 0.68 1</diffuse></material></visual>
+
+        <collision name="crate_tall_collision"><pose>-3.8 -2.9 0.55 0 0 0.2</pose><geometry><box><size>0.65 0.55 1.10</size></box></geometry></collision>
+        <visual name="crate_tall_visual"><pose>-3.8 -2.9 0.55 0 0 0.2</pose><geometry><box><size>0.65 0.55 1.10</size></box></geometry><material><ambient>0.62 0.36 0.12 1</ambient><diffuse>0.72 0.43 0.16 1</diffuse></material></visual>
+
+        <collision name="crate_low_collision"><pose>-1.6 -2.65 0.28 0 0 -0.3</pose><geometry><box><size>0.8 0.65 0.56</size></box></geometry></collision>
+        <visual name="crate_low_visual"><pose>-1.6 -2.65 0.28 0 0 -0.3</pose><geometry><box><size>0.8 0.65 0.56</size></box></geometry><material><ambient>0.62 0.36 0.12 1</ambient><diffuse>0.72 0.43 0.16 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <gui fullscreen="0">
+      <camera name="overview">
+        <pose>-8 -10 10 0 0.62 0.73</pose>
+      </camera>
+    </gui>
+  </world>
+</sdf>

@@ -1,0 +1,27 @@
+<launch>
+  <arg name="gui" default="true"/>
+  <arg name="paused" default="false"/>
+  <arg name="x" default="-3.0"/>
+  <arg name="y" default="-1.8"/>
+  <arg name="yaw" default="0.0"/>
+
+  <param name="robot_description"
+         command="$(find xacro)/xacro $(find robot_slam)/urdf/turtlebot3_waffle_pi_rgbd.urdf.xacro"/>
+
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find robot_slam)/worlds/indoor.world"/>
+    <arg name="gui" value="$(arg gui)"/>
+    <arg name="paused" value="$(arg paused)"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="verbose" value="false"/>
+  </include>
+
+  <node pkg="gazebo_ros" type="spawn_model" name="spawn_turtlebot3"
+        args="-urdf -param robot_description -model turtlebot3_waffle_pi -x $(arg x) -y $(arg y) -z 0.02 -Y $(arg yaw)"
+        output="screen"/>
+
+  <node pkg="robot_state_publisher" type="robot_state_publisher"
+        name="robot_state_publisher" output="screen">
+    <param name="publish_frequency" value="30.0"/>
+  </node>
+</launch>

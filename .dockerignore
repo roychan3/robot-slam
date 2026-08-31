@@ -1,10 +1,23 @@
 # Keep the build context small and reproducible. Anything listed here is never
 # sent to the daemon, so it cannot end up in an image layer by accident.
+#
+# Docker anchors patterns at the context root and its `*` does not cross `/`,
+# so a bare `build/` matches only ./build. Anything meant to apply at any depth
+# needs an explicit `**/`.
 
 .git
 .gitignore
 .dockerignore
 Dockerfile
+
+# catkin output from a host-side build. Copying it in breaks the image build:
+# the in-container catkin_make finds a CMakeCache.txt generated for a host path
+# and refuses to continue.
+**/build
+**/devel
+**/install
+**/logs
+.catkin_workspace
 
 # Environments and caches
 .venv
@@ -12,8 +25,8 @@ env/
 venv/
 ENV/
 .env
-__pycache__/
-*.py[codz]
+**/__pycache__
+**/*.py[codz]
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
@@ -23,9 +36,8 @@ htmlcov/
 .coverage.*
 
 # Packaging output
-build/
 dist/
-*.egg-info/
+**/*.egg-info
 
 # Large SLAM artifacts. These are the reason this file exists: a single
 # recorded bag can dwarf the rest of the context.
@@ -35,20 +47,19 @@ maps/
 trajectories/
 outputs/
 results/
-logs/
-*.bag
-*.db3
-rosbag2_*/
-*.pcd
-*.ply
-*.las
-*.laz
-*.pt
-*.pth
-*.ckpt
-*.onnx
-*.safetensors
-*.log
+**/*.bag
+**/*.db3
+**/rosbag2_*
+**/*.pcd
+**/*.ply
+**/*.las
+**/*.laz
+**/*.pt
+**/*.pth
+**/*.ckpt
+**/*.onnx
+**/*.safetensors
+**/*.log
 
 # macOS
-.DS_Store
+**/.DS_Store

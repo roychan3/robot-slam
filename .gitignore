@@ -65,6 +65,12 @@ ipython_config.py
 
 # ---- robot-slam project-specific ----
 
+# catkin output from a host-side build. `build/` above already matches at any
+# depth, but devel/ and install/ are catkin-specific and need naming.
+devel/
+install/
+.catkin_workspace
+
 # Recorded sensor data. Bags are large and rewritten often; keep them outside
 # the repository or under data/.
 *.bag
