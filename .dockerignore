@@ -1,0 +1,54 @@
+# Keep the build context small and reproducible. Anything listed here is never
+# sent to the daemon, so it cannot end up in an image layer by accident.
+
+.git
+.gitignore
+.dockerignore
+Dockerfile
+
+# Environments and caches
+.venv
+env/
+venv/
+ENV/
+.env
+__pycache__/
+*.py[codz]
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints
+htmlcov/
+.coverage
+.coverage.*
+
+# Packaging output
+build/
+dist/
+*.egg-info/
+
+# Large SLAM artifacts. These are the reason this file exists: a single
+# recorded bag can dwarf the rest of the context.
+data/
+datasets/
+maps/
+trajectories/
+outputs/
+results/
+logs/
+*.bag
+*.db3
+rosbag2_*/
+*.pcd
+*.ply
+*.las
+*.laz
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+*.log
+
+# macOS
+.DS_Store

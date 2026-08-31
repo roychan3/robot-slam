@@ -10,7 +10,18 @@ documentation land in later commits.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+pip install -r requirements.txt
 ```
+
+Or in a container:
+
+```bash
+docker build -t robot-slam:dev .
+docker run --rm -it robot-slam:dev
+```
+
+The image runs as an unprivileged user and has no entry point yet, so it opens
+a shell. Add dependencies to `requirements.txt` and both paths pick them up.
 
 ## What is not tracked
 
