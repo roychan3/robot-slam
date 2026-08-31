@@ -69,6 +69,10 @@ ipython_config.py
 # depth, but devel/ and install/ are catkin-specific and need naming.
 devel/
 install/
+
+# Agent session exports. These run to tens of megabytes and land in the repo
+# root, where a `git add -A` would commit one permanently.
+trajectory-*.json
 .catkin_workspace
 
 # Recorded sensor data. Bags are large and rewritten often; keep them outside

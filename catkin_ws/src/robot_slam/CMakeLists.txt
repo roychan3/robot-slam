@@ -7,6 +7,7 @@ catkin_package()
 
 catkin_install_python(
   PROGRAMS
+    scripts/loop_closure_test.py
     scripts/save_pointcloud.py
     scripts/smoke_test.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

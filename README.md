@@ -37,7 +37,8 @@ macOS Docker Desktop maps ownership itself and needs no override. If you skip
 this on Linux, the simulation still runs and the entrypoint prints a warning —
 only saving to `/data` fails.
 
-Drive the robot from another terminal so both maps cover the environment:
+Drive the robot manually from another terminal so both maps cover the
+environment:
 
 ```bash
 docker compose exec slam bash -c \
@@ -56,6 +57,48 @@ Stop the simulation with:
 ```bash
 docker compose down
 ```
+
+## Automatic loop-closure simulation
+
+The loop-closure check drives the robot around a 2.0 m x 1.5 m rectangular
+circuit in the open starting room, returns it to its original position and
+heading, and then compares both simulated odometry and gmapping's SLAM pose
+with their starting values. The robot stops and the command exits non-zero if
+it encounters an obstacle, times out, skips the circuit, or exceeds a closure
+tolerance.
+
+Build the image, then run the self-contained check:
+
+```bash
+docker compose build
+./docker/loop-test.sh
+```
+
+To run the same loop in an already-running Compose service:
+
+```bash
+docker compose exec slam bash -c \
+  'source /opt/ros/noetic/setup.bash && source /app/catkin_ws/devel/setup.bash && rosrun robot_slam loop_closure_test.py'
+```
+
+A successful run ends with `LOOP_CLOSURE_RESULT: PASS` and reports the driven
+path length plus position/heading errors for odometry and SLAM. The defaults
+require the final SLAM pose to be within 0.30 m and 0.25 rad of its initial
+pose. Parameters such as `_loop_width`, `_loop_height`, and
+`_slam_position_tolerance` can be overridden with normal `rosrun` private
+parameter syntax.
+
+Exit codes distinguish the two ways a run can end badly:
+
+| Code | Meaning |
+| --- | --- |
+| `0` | every check passed |
+| `1` | the robot drove the circuit but a tolerance was exceeded |
+| `2` | the run could not be completed — obstacle ahead, motion timeout, stale lidar, or a missing topic or transform |
+
+`motion_timeout` is measured in **simulated** time, so it does not shrink when
+Gazebo runs below real time. `./docker/run-test.sh` additionally caps each test
+in wall-clock seconds, so a wedged simulation cannot hang the run.
 
 ## Main ROS interfaces
 
