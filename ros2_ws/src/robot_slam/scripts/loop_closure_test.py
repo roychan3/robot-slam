@@ -7,11 +7,17 @@ import threading
 import time
 from dataclasses import dataclass
 
-import rospy
-import tf2_ros
+import rclpy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import OccupancyGrid, Odometry
+from rclpy.duration import Duration
+from rclpy.executors import MultiThreadedExecutor
+from rclpy.node import Node
+from rclpy.parameter import Parameter
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from rclpy.time import Time
 from sensor_msgs.msg import LaserScan
+from tf2_ros import Buffer, TransformException, TransformListener
 
 
 @dataclass(frozen=True)
@@ -39,39 +45,43 @@ def clamp(value, lower, upper):
     return max(lower, min(upper, value))
 
 
-class LoopClosureTest:
+class LoopClosureTest(Node):
     def __init__(self):
-        self.cmd_vel_topic = rospy.get_param("~cmd_vel_topic", "/cmd_vel")
-        self.odom_topic = rospy.get_param("~odom_topic", "/odom")
-        self.scan_topic = rospy.get_param("~scan_topic", "/scan")
-        self.map_frame = rospy.get_param("~map_frame", "map")
-        self.base_frame = rospy.get_param("~base_frame", "base_footprint")
+        super().__init__("robot_slam_loop_closure_test")
+        self.set_parameters([Parameter("use_sim_time", value=True)])
 
-        self.loop_width = float(rospy.get_param("~loop_width", 2.0))
-        self.loop_height = float(rospy.get_param("~loop_height", 1.5))
-        self.linear_speed = float(rospy.get_param("~linear_speed", 0.22))
-        self.angular_speed = float(rospy.get_param("~angular_speed", 0.65))
+        self.cmd_vel_topic = self._parameter("cmd_vel_topic", "/cmd_vel")
+        self.odom_topic = self._parameter("odom_topic", "/odom")
+        self.scan_topic = self._parameter("scan_topic", "/scan")
+        self.map_frame = self._parameter("map_frame", "map")
+        self.base_frame = self._parameter("base_frame", "base_footprint")
+
+        self.loop_width = float(self._parameter("loop_width", 2.0))
+        self.loop_height = float(self._parameter("loop_height", 1.5))
+        self.linear_speed = float(self._parameter("linear_speed", 0.22))
+        self.angular_speed = float(self._parameter("angular_speed", 0.65))
         self.waypoint_tolerance = float(
-            rospy.get_param("~waypoint_tolerance", 0.07)
+            self._parameter("waypoint_tolerance", 0.07)
         )
         self.heading_tolerance = float(
-            rospy.get_param("~heading_tolerance", 0.04)
+            self._parameter("heading_tolerance", 0.04)
         )
         self.position_tolerance = float(
-            rospy.get_param("~position_tolerance", 0.20)
+            self._parameter("position_tolerance", 0.20)
         )
-        self.yaw_tolerance = float(rospy.get_param("~yaw_tolerance", 0.20))
+        self.yaw_tolerance = float(self._parameter("yaw_tolerance", 0.20))
         self.slam_position_tolerance = float(
-            rospy.get_param("~slam_position_tolerance", 0.30)
+            self._parameter("slam_position_tolerance", 0.30)
         )
         self.slam_yaw_tolerance = float(
-            rospy.get_param("~slam_yaw_tolerance", 0.25)
+            self._parameter("slam_yaw_tolerance", 0.25)
         )
         self.obstacle_distance = float(
-            rospy.get_param("~obstacle_distance", 0.38)
+            self._parameter("obstacle_distance", 0.38)
         )
-        self.motion_timeout = float(rospy.get_param("~motion_timeout", 150.0))
-        self.startup_timeout = float(rospy.get_param("~startup_timeout", 75.0))
+        self.motion_timeout = float(self._parameter("motion_timeout", 150.0))
+        self.startup_timeout = float(self._parameter("startup_timeout", 75.0))
+        self.scan_timeout = float(self._parameter("scan_timeout", 3.0))
 
         if self.loop_width <= 0.0 or self.loop_height <= 0.0:
             raise ValueError("loop_width and loop_height must be positive")
@@ -82,21 +92,27 @@ class LoopClosureTest:
         self._path_length = 0.0
         self._front_clearance = float("inf")
         self._last_scan_time = None
-        self.scan_timeout = float(rospy.get_param("~scan_timeout", 3.0))
+        self._map_received = False
 
-        self._cmd_pub = rospy.Publisher(
-            self.cmd_vel_topic, Twist, queue_size=1
+        sensor_qos = QoSProfile(depth=10)
+        sensor_qos.reliability = ReliabilityPolicy.BEST_EFFORT
+        map_qos = QoSProfile(depth=1)
+        map_qos.durability = DurabilityPolicy.TRANSIENT_LOCAL
+
+        self._cmd_pub = self.create_publisher(Twist, self.cmd_vel_topic, 1)
+        self.create_subscription(Odometry, self.odom_topic, self._odom_callback, 1)
+        self.create_subscription(
+            LaserScan, self.scan_topic, self._scan_callback, sensor_qos
         )
-        rospy.Subscriber(
-            self.odom_topic, Odometry, self._odom_callback, queue_size=1
-        )
-        rospy.Subscriber(
-            self.scan_topic, LaserScan, self._scan_callback, queue_size=1
+        self.create_subscription(
+            OccupancyGrid, "/map", self._map_callback, map_qos
         )
 
-        self._tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(30.0))
-        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
-        rospy.on_shutdown(self.stop)
+        self._tf_buffer = Buffer(cache_time=Duration(seconds=30.0))
+        self._tf_listener = TransformListener(self._tf_buffer, self)
+
+    def _parameter(self, name, default):
+        return self.declare_parameter(name, default).value
 
     def _odom_callback(self, message):
         pose = Pose2D(
@@ -110,7 +126,6 @@ class LoopClosureTest:
                     pose.x - self._last_path_pose.x,
                     pose.y - self._last_path_pose.y,
                 )
-                # Ignore discontinuities caused by simulation resets.
                 if step < 0.5:
                     self._path_length += step
             self._last_path_pose = pose
@@ -126,7 +141,11 @@ class LoopClosureTest:
                     clearances.append(distance)
         with self._lock:
             self._front_clearance = min(clearances, default=float("inf"))
-            self._last_scan_time = rospy.Time.now()
+            self._last_scan_time = self.get_clock().now()
+
+    def _map_callback(self, _message):
+        with self._lock:
+            self._map_received = True
 
     def _current_odom(self):
         with self._lock:
@@ -137,17 +156,10 @@ class LoopClosureTest:
             return self._path_length
 
     def _current_front_clearance(self):
-        """Front clearance in metres, or None when the lidar has gone quiet.
-
-        Returning inf for a dead sensor would read as 'nothing ahead' and
-        silently disable the obstacle guard for the rest of the run, so an
-        unknown clearance is reported as unknown and the caller aborts.
-        """
-
         with self._lock:
             if self._last_scan_time is None:
                 return None
-            age = (rospy.Time.now() - self._last_scan_time).to_sec()
+            age = (self.get_clock().now() - self._last_scan_time).nanoseconds / 1e9
             if age > self.scan_timeout:
                 return None
             return self._front_clearance
@@ -161,44 +173,34 @@ class LoopClosureTest:
         transform = self._tf_buffer.lookup_transform(
             self.map_frame,
             self.base_frame,
-            rospy.Time(0),
-            rospy.Duration(1.0),
+            Time(),
         )
         translation = transform.transform.translation
         rotation = transform.transform.rotation
         return Pose2D(translation.x, translation.y, quaternion_yaw(rotation))
 
     def _wait_for_inputs(self):
-        rospy.loginfo("Waiting for odometry, lidar, map, and SLAM transform")
-        rospy.wait_for_message(
-            self.odom_topic, Odometry, timeout=self.startup_timeout
+        self.get_logger().info(
+            "Waiting for odometry, lidar, map, and SLAM transform"
         )
-        rospy.wait_for_message(
-            self.scan_topic, LaserScan, timeout=self.startup_timeout
-        )
-        rospy.wait_for_message("/map", OccupancyGrid, timeout=self.startup_timeout)
-
         deadline = time.monotonic() + self.startup_timeout
-        while not rospy.is_shutdown():
-            try:
-                return self._slam_pose()
-            except (
-                tf2_ros.LookupException,
-                tf2_ros.ConnectivityException,
-                tf2_ros.ExtrapolationException,
-            ):
-                if time.monotonic() >= deadline:
-                    raise RuntimeError(
-                        "SLAM transform {} -> {} was not available".format(
-                            self.map_frame, self.base_frame
-                        )
-                    )
-                rospy.sleep(0.1)
-        raise RuntimeError("ROS shut down while waiting for SLAM")
+        while rclpy.ok() and time.monotonic() < deadline:
+            with self._lock:
+                ready = (
+                    self._odom_pose is not None
+                    and self._last_scan_time is not None
+                    and self._map_received
+                )
+            if ready:
+                try:
+                    return self._slam_pose()
+                except TransformException:
+                    pass
+            time.sleep(0.1)
+        raise RuntimeError("odometry, lidar, map, or SLAM transform was unavailable")
 
     def stop(self):
-        if hasattr(self, "_cmd_pub"):
-            self._cmd_pub.publish(Twist())
+        self._cmd_pub.publish(Twist())
 
     def _publish_velocity(self, linear=0.0, angular=0.0):
         command = Twist()
@@ -207,9 +209,9 @@ class LoopClosureTest:
         self._cmd_pub.publish(command)
 
     def _rotate_to(self, target_yaw, deadline):
-        rate = rospy.Rate(20)
-        while not rospy.is_shutdown():
-            if rospy.Time.now() >= deadline:
+        rate = self.create_rate(20.0)
+        while rclpy.ok():
+            if self.get_clock().now() >= deadline:
                 raise RuntimeError("motion timed out while rotating")
             pose = self._current_odom()
             if pose is None:
@@ -227,9 +229,9 @@ class LoopClosureTest:
         raise RuntimeError("ROS shut down while rotating")
 
     def _drive_to(self, goal_x, goal_y, deadline):
-        rate = rospy.Rate(20)
-        while not rospy.is_shutdown():
-            if rospy.Time.now() >= deadline:
+        rate = self.create_rate(20.0)
+        while rclpy.ok():
+            if self.get_clock().now() >= deadline:
                 raise RuntimeError("motion timed out while driving")
             pose = self._current_odom()
             if pose is None:
@@ -255,12 +257,12 @@ class LoopClosureTest:
                 clearance = self._current_front_clearance()
                 if clearance is None:
                     raise RuntimeError(
-                        "no lidar data for over {:.1f} s; refusing to drive"
-                        .format(self.scan_timeout)
+                        f"no lidar data for over {self.scan_timeout:.1f} s; "
+                        "refusing to drive"
                     )
                 if clearance < self.obstacle_distance:
                     raise RuntimeError(
-                        "obstacle detected {:.2f} m ahead".format(clearance)
+                        f"obstacle detected {clearance:.2f} m ahead"
                     )
 
             angular = clamp(
@@ -296,35 +298,24 @@ class LoopClosureTest:
         self._reset_path_length()
         waypoints = self._world_waypoints(initial_odom)
         expected_path_length = 2.0 * (self.loop_width + self.loop_height)
-        rospy.loginfo(
-            "Starting %.2f m x %.2f m loop at odom (%.2f, %.2f, %.2f rad)",
-            self.loop_width,
-            self.loop_height,
-            initial_odom.x,
-            initial_odom.y,
-            initial_odom.yaw,
+        self.get_logger().info(
+            f"Starting {self.loop_width:.2f} m x {self.loop_height:.2f} m loop "
+            f"at odom ({initial_odom.x:.2f}, {initial_odom.y:.2f}, "
+            f"{initial_odom.yaw:.2f} rad)"
         )
 
-        # Simulated time, not wall clock. Rate/sleep in the drive loops run on
-        # /clock, so a wall-clock budget silently shrinks with Gazebo's
-        # real-time factor: at RTF 0.3 a 150 s budget buys 45 s of robot
-        # motion, and the run fails as 'motion timed out' rather than for
-        # anything to do with the robot. The startup wait below stays on the
-        # wall clock on purpose, so a /clock that never starts is still
-        # caught rather than waited on forever.
-        deadline = rospy.Time.now() + rospy.Duration(self.motion_timeout)
+        # Keep this budget in simulated time so a low real-time factor does not
+        # reduce how far the robot is allowed to travel.
+        deadline = self.get_clock().now() + Duration(seconds=self.motion_timeout)
         try:
             for index, (goal_x, goal_y) in enumerate(waypoints, start=1):
                 pose = self._current_odom()
                 if pose is None:
                     raise RuntimeError("odometry stopped publishing mid-loop")
                 target_yaw = math.atan2(goal_y - pose.y, goal_x - pose.x)
-                rospy.loginfo(
-                    "Waypoint %d/%d: (%.2f, %.2f)",
-                    index,
-                    len(waypoints),
-                    goal_x,
-                    goal_y,
+                self.get_logger().info(
+                    f"Waypoint {index}/{len(waypoints)}: "
+                    f"({goal_x:.2f}, {goal_y:.2f})"
                 )
                 self._rotate_to(target_yaw, deadline)
                 self._drive_to(goal_x, goal_y, deadline)
@@ -332,11 +323,13 @@ class LoopClosureTest:
         finally:
             self.stop()
 
-        # Let the final scan and map-to-odom correction settle before measuring.
-        rospy.sleep(2.0)
+        settle_rate = self.create_rate(0.5)
+        settle_rate.sleep()
         final_odom = self._current_odom()
         final_slam = self._slam_pose()
         path_length = self._current_path_length()
+        if final_odom is None:
+            raise RuntimeError("odometry was unavailable after the loop")
 
         odom_position_error = math.hypot(
             final_odom.x - initial_odom.x, final_odom.y - initial_odom.y
@@ -357,33 +350,58 @@ class LoopClosureTest:
             "restored SLAM heading": slam_yaw_error <= self.slam_yaw_tolerance,
         }
 
-        rospy.loginfo(
-            "Loop result: path=%.2f m, odom_error=%.3f m/%.3f rad, "
-            "slam_error=%.3f m/%.3f rad",
-            path_length,
-            odom_position_error,
-            odom_yaw_error,
-            slam_position_error,
-            slam_yaw_error,
+        self.get_logger().info(
+            f"Loop result: path={path_length:.2f} m, "
+            f"odom_error={odom_position_error:.3f} m/{odom_yaw_error:.3f} rad, "
+            f"slam_error={slam_position_error:.3f} m/{slam_yaw_error:.3f} rad"
         )
         for name, passed in checks.items():
-            rospy.loginfo("%s: %s", name, "PASS" if passed else "FAIL")
+            self.get_logger().info(f"{name}: {'PASS' if passed else 'FAIL'}")
 
         failed = [name for name, passed in checks.items() if not passed]
         if failed:
-            rospy.logerr("LOOP_CLOSURE_RESULT: FAIL (%s)", ", ".join(failed))
+            self.get_logger().error(
+                f"LOOP_CLOSURE_RESULT: FAIL ({', '.join(failed)})"
+            )
             return 1
-        rospy.loginfo("LOOP_CLOSURE_RESULT: PASS")
+        self.get_logger().info("LOOP_CLOSURE_RESULT: PASS")
         return 0
 
 
 def main():
-    rospy.init_node("robot_slam_loop_closure_test")
+    rclpy.init()
+    node = None
+    executor = MultiThreadedExecutor(num_threads=2)
+    stop_spinning = threading.Event()
+    spin_thread = None
     try:
-        return LoopClosureTest().run()
-    except (rospy.ROSException, RuntimeError, ValueError) as exc:
-        rospy.logerr("LOOP_CLOSURE_RESULT: ERROR: %s", exc)
+        node = LoopClosureTest()
+        executor.add_node(node)
+
+        def spin():
+            while rclpy.ok() and not stop_spinning.is_set():
+                executor.spin_once(timeout_sec=0.1)
+
+        spin_thread = threading.Thread(target=spin, daemon=True)
+        spin_thread.start()
+        return node.run()
+    except (TransformException, RuntimeError, ValueError) as exc:
+        if node is not None:
+            node.get_logger().error(f"LOOP_CLOSURE_RESULT: ERROR: {exc}")
+        else:
+            print(f"LOOP_CLOSURE_RESULT: ERROR: {exc}", file=sys.stderr)
         return 2
+    finally:
+        if node is not None:
+            node.stop()
+        stop_spinning.set()
+        if spin_thread is not None:
+            spin_thread.join(timeout=2.0)
+        if node is not None:
+            executor.remove_node(node)
+            node.destroy_node()
+        executor.shutdown()
+        rclpy.shutdown()
 
 
 if __name__ == "__main__":

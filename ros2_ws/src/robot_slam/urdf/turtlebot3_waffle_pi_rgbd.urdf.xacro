@@ -124,54 +124,51 @@
     <origin xyz="0.013 0 0" rpy="-1.570796 0 -1.570796"/>
   </joint>
 
-  <gazebo reference="base_link">
-    <material>Gazebo/Black</material>
-  </gazebo>
   <gazebo reference="wheel_left_link">
     <mu1>10.0</mu1><mu2>10.0</mu2><kp>1000000.0</kp><kd>100.0</kd>
-    <material>Gazebo/Black</material>
   </gazebo>
   <gazebo reference="wheel_right_link">
     <mu1>10.0</mu1><mu2>10.0</mu2><kp>1000000.0</kp><kd>100.0</kd>
-    <material>Gazebo/Black</material>
   </gazebo>
   <gazebo reference="caster_front_link">
-    <mu1>0.01</mu1><mu2>0.01</mu2><material>Gazebo/Black</material>
+    <mu1>0.01</mu1><mu2>0.01</mu2>
   </gazebo>
   <gazebo reference="caster_rear_link">
-    <mu1>0.01</mu1><mu2>0.01</mu2><material>Gazebo/Black</material>
+    <mu1>0.01</mu1><mu2>0.01</mu2>
   </gazebo>
 
   <gazebo>
-    <plugin name="turtlebot3_differential_drive" filename="libgazebo_ros_diff_drive.so">
-      <robotNamespace>/</robotNamespace>
-      <updateRate>30</updateRate>
-      <leftJoint>wheel_left_joint</leftJoint>
-      <rightJoint>wheel_right_joint</rightJoint>
-      <wheelSeparation>${wheel_separation}</wheelSeparation>
-      <wheelDiameter>${2.0 * wheel_radius}</wheelDiameter>
-      <wheelTorque>20</wheelTorque>
-      <wheelAcceleration>1.0</wheelAcceleration>
-      <commandTopic>cmd_vel</commandTopic>
-      <odometryTopic>odom</odometryTopic>
-      <odometryFrame>odom</odometryFrame>
-      <odometrySource>world</odometrySource>
-      <robotBaseFrame>base_footprint</robotBaseFrame>
-      <publishOdomTF>true</publishOdomTF>
-      <publishTf>true</publishTf>
-      <publishWheelTF>false</publishWheelTF>
-      <publishWheelJointState>true</publishWheelJointState>
-      <legacyMode>false</legacyMode>
-      <rosDebugLevel>na</rosDebugLevel>
+    <plugin filename="gz-sim-diff-drive-system"
+            name="gz::sim::systems::DiffDrive">
+      <left_joint>wheel_left_joint</left_joint>
+      <right_joint>wheel_right_joint</right_joint>
+      <wheel_separation>${wheel_separation}</wheel_separation>
+      <wheel_radius>${wheel_radius}</wheel_radius>
+      <topic>/cmd_vel</topic>
+      <odom_topic>/odom</odom_topic>
+      <tf_topic>/tf</tf_topic>
+      <frame_id>odom</frame_id>
+      <child_frame_id>base_footprint</child_frame_id>
+      <odom_publish_frequency>30</odom_publish_frequency>
+      <max_linear_acceleration>1.0</max_linear_acceleration>
+      <max_angular_acceleration>4.0</max_angular_acceleration>
+    </plugin>
+    <plugin filename="gz-sim-joint-state-publisher-system"
+            name="gz::sim::systems::JointStatePublisher">
+      <topic>/joint_states</topic>
+      <joint_name>wheel_left_joint</joint_name>
+      <joint_name>wheel_right_joint</joint_name>
     </plugin>
   </gazebo>
 
   <gazebo reference="base_scan">
-    <sensor name="lds_01" type="ray">
+    <sensor name="lds_01" type="gpu_lidar">
       <pose>0 0 0 0 0 0</pose>
+      <topic>/scan</topic>
+      <always_on>true</always_on>
       <visualize>true</visualize>
       <update_rate>10</update_rate>
-      <ray>
+      <lidar>
         <scan>
           <horizontal>
             <samples>360</samples><resolution>1</resolution>
@@ -180,49 +177,22 @@
         </scan>
         <range><min>0.12</min><max>8.0</max><resolution>0.015</resolution></range>
         <noise><type>gaussian</type><mean>0.0</mean><stddev>0.01</stddev></noise>
-      </ray>
-      <plugin name="turtlebot3_lidar" filename="libgazebo_ros_laser.so">
-        <topicName>scan</topicName>
-        <frameName>base_scan</frameName>
-      </plugin>
+      </lidar>
     </sensor>
   </gazebo>
 
   <gazebo reference="camera_link">
-    <sensor name="turtlebot3_rgbd" type="depth">
+    <sensor name="turtlebot3_rgbd" type="rgbd_camera">
       <always_on>true</always_on>
       <update_rate>8</update_rate>
       <visualize>true</visualize>
+      <topic>/camera/depth</topic>
       <camera>
+        <optical_frame_id>camera_depth_optical_frame</optical_frame_id>
         <horizontal_fov>1.0472</horizontal_fov>
         <image><width>320</width><height>240</height><format>R8G8B8</format></image>
-        <depth_camera/>
         <clip><near>0.15</near><far>6.0</far></clip>
       </camera>
-      <plugin name="turtlebot3_depth_camera" filename="libgazebo_ros_depth_camera.so">
-        <baseline>0.20</baseline>
-        <alwaysOn>true</alwaysOn>
-        <updateRate>8.0</updateRate>
-        <cameraName>camera</cameraName>
-        <imageTopicName>rgb/image_raw</imageTopicName>
-        <cameraInfoTopicName>rgb/camera_info</cameraInfoTopicName>
-        <depthImageTopicName>depth/image_raw</depthImageTopicName>
-        <depthImageCameraInfoTopicName>depth/camera_info</depthImageCameraInfoTopicName>
-        <pointCloudTopicName>depth/points</pointCloudTopicName>
-        <frameName>camera_depth_optical_frame</frameName>
-        <pointCloudCutoff>0.20</pointCloudCutoff>
-        <pointCloudCutoffMax>6.0</pointCloudCutoffMax>
-        <hackBaseline>0.07</hackBaseline>
-        <distortionK1>0.0</distortionK1>
-        <distortionK2>0.0</distortionK2>
-        <distortionK3>0.0</distortionK3>
-        <distortionT1>0.0</distortionT1>
-        <distortionT2>0.0</distortionT2>
-        <CxPrime>0.0</CxPrime>
-        <Cx>0.0</Cx>
-        <Cy>0.0</Cy>
-        <focalLength>0</focalLength>
-      </plugin>
     </sensor>
   </gazebo>
 </robot>

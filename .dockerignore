@@ -10,14 +10,13 @@
 .dockerignore
 Dockerfile
 
-# catkin output from a host-side build. Copying it in breaks the image build:
-# the in-container catkin_make finds a CMakeCache.txt generated for a host path
-# and refuses to continue.
+# Colcon output from a host-side build. Copying it in can make the in-container
+# build reuse artifacts generated for a different host path.
 **/build
 **/devel
 **/install
+**/log
 **/logs
-.catkin_workspace
 
 # Environments and caches
 .venv

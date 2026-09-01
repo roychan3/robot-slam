@@ -1,16 +1,17 @@
 # TurtleBot3 indoor SLAM
 
-This project runs a complete ROS 1 Noetic simulation in Docker:
+This project runs a complete ROS 2 Jazzy simulation in Docker:
 
-- Gazebo 11 provides a 10 m × 8 m indoor world with rooms and furniture.
+- Gazebo Harmonic provides a 10 m × 8 m indoor world with rooms and furniture.
 - One TurtleBot3 Waffle Pi–class robot provides differential-drive odometry,
   a 360° lidar, and an RGB-D camera.
-- `slam_gmapping` builds the 2D occupancy map and publishes the `map` frame.
+- SLAM Toolbox builds the 2D occupancy map and publishes the `map` frame.
 - `octomap_server` fuses RGB-D observations in that frame and publishes the
   indoor environment as a 3D `sensor_msgs/PointCloud2`.
 
-`gmapping` is a 2D lidar SLAM algorithm; the RGB-D/OctoMap branch is what adds
-the requested 3D representation.
+SLAM Toolbox handles 2D lidar SLAM; the RGB-D/OctoMap branch adds the 3D
+representation. Gazebo and ROS communicate through `ros_gz_bridge` while the
+public ROS topic names remain unchanged from the earlier Classic-based stack.
 
 ## Run
 
@@ -23,8 +24,8 @@ docker compose up -d
 ```
 
 The default is headless: the container always creates its own virtual X
-display, because Gazebo Classic needs a rendering context for its depth camera
-even with `gzclient` disabled.
+display, because Gazebo Sim needs a rendering context for its depth camera
+even with the graphical client disabled.
 
 On Linux, `./data` is a bind mount that keeps host ownership, so the container
 user must match the user that owns it. Start it with:
@@ -42,14 +43,14 @@ environment:
 
 ```bash
 docker compose exec slam bash -c \
-  'source /opt/ros/noetic/setup.bash && source /app/catkin_ws/devel/setup.bash && rosrun teleop_twist_keyboard teleop_twist_keyboard.py'
+  'source /opt/ros/jazzy/setup.bash && source /app/ros2_ws/install/setup.bash && ros2 run teleop_twist_keyboard teleop_twist_keyboard'
 ```
 
 Save the accumulated 3D environment to the host's `data/` directory:
 
 ```bash
 docker compose exec slam bash -c \
-  'source /opt/ros/noetic/setup.bash && source /app/catkin_ws/devel/setup.bash && rosrun robot_slam save_pointcloud.py --output /data/indoor_environment.pcd'
+  'source /opt/ros/jazzy/setup.bash && source /app/ros2_ws/install/setup.bash && ros2 run robot_slam save_pointcloud.py --output /data/indoor_environment.pcd'
 ```
 
 Stop the simulation with:
@@ -62,7 +63,7 @@ docker compose down
 
 The loop-closure check drives the robot around a 2.0 m x 1.5 m rectangular
 circuit in the open starting room, returns it to its original position and
-heading, and then compares both simulated odometry and gmapping's SLAM pose
+heading, and then compares both simulated odometry and SLAM Toolbox's pose
 with their starting values. The robot stops and the command exits non-zero if
 it encounters an obstacle, times out, skips the circuit, or exceeds a closure
 tolerance.
@@ -78,15 +79,15 @@ To run the same loop in an already-running Compose service:
 
 ```bash
 docker compose exec slam bash -c \
-  'source /opt/ros/noetic/setup.bash && source /app/catkin_ws/devel/setup.bash && rosrun robot_slam loop_closure_test.py'
+  'source /opt/ros/jazzy/setup.bash && source /app/ros2_ws/install/setup.bash && ros2 run robot_slam loop_closure_test.py'
 ```
 
 A successful run ends with `LOOP_CLOSURE_RESULT: PASS` and reports the driven
 path length plus position/heading errors for odometry and SLAM. The defaults
 require the final SLAM pose to be within 0.30 m and 0.25 rad of its initial
-pose. Parameters such as `_loop_width`, `_loop_height`, and
-`_slam_position_tolerance` can be overridden with normal `rosrun` private
-parameter syntax.
+pose. Parameters such as `loop_width`, `loop_height`, and
+`slam_position_tolerance` can be overridden with ROS 2 parameter syntax, for
+example `--ros-args -p loop_width:=1.5`.
 
 Exit codes distinguish the two ways a run can end badly:
 
@@ -104,17 +105,17 @@ in wall-clock seconds, so a wedged simulation cannot hang the run.
 
 | Topic | Type | Purpose |
 | --- | --- | --- |
-| `/scan` | `sensor_msgs/LaserScan` | 360° lidar input to gmapping |
-| `/map` | `nav_msgs/OccupancyGrid` | 2D gmapping result |
-| `/camera/depth/points` | `sensor_msgs/PointCloud2` | Current RGB-D view |
-| `/octomap_point_cloud_centers` | `sensor_msgs/PointCloud2` | Accumulated 3D environment |
-| `/cmd_vel` | `geometry_msgs/Twist` | TurtleBot3 drive commands |
-| `/odom` | `nav_msgs/Odometry` | Simulated wheel odometry |
+| `/scan` | `sensor_msgs/msg/LaserScan` | 360° lidar input to SLAM Toolbox |
+| `/map` | `nav_msgs/msg/OccupancyGrid` | 2D SLAM Toolbox result |
+| `/camera/depth/points` | `sensor_msgs/msg/PointCloud2` | Current RGB-D view |
+| `/octomap_point_cloud_centers` | `sensor_msgs/msg/PointCloud2` | Accumulated 3D environment |
+| `/cmd_vel` | `geometry_msgs/msg/Twist` | TurtleBot3 drive commands |
+| `/odom` | `nav_msgs/msg/Odometry` | Simulated wheel odometry |
 
 ## Verification
 
 The integration check starts a temporary container and verifies live odometry,
-lidar, depth cloud, gmapping map, and accumulated 3D cloud:
+lidar, depth cloud, SLAM Toolbox map, and accumulated 3D cloud:
 
 ```bash
 ./docker/smoke-test.sh
@@ -124,7 +125,7 @@ To check an already-running Compose service instead:
 
 ```bash
 docker compose exec slam bash -c \
-  'source /opt/ros/noetic/setup.bash && source /app/catkin_ws/devel/setup.bash && rosrun robot_slam smoke_test.py'
+  'source /opt/ros/jazzy/setup.bash && source /app/ros2_ws/install/setup.bash && ros2 run robot_slam smoke_test.py'
 ```
 
 ## Browser UI
@@ -136,15 +137,16 @@ view and an RViz view of the map reconstructed by the robot:
 docker compose --profile ui up -d ui
 ```
 
-Open <http://127.0.0.1:6080/vnc.html?autoconnect=true&resize=scale>.
+Open
+<http://127.0.0.1:6080/jazzy-harmonic/vnc.html?autoconnect=true&resize=scale>.
 
 RViz opens on the live `/map` occupancy grid and overlays the robot, current
 lidar returns, and accumulated 3D reconstruction. The UI places Gazebo and
 RViz side by side, so the simulation and the map stay visible together. The
 map fills in as the robot is driven around the environment.
 
-Ubuntu 20.04 ships noVNC 1.0, where `vnc.html` is the current entry point;
-`vnc_auto.html` still works but is a compatibility shim from the 0.x series.
+The release-specific URL prevents browsers from mixing cached noVNC 1.0 files
+from the former Ubuntu 20.04 image with the noVNC 1.3 client in Ubuntu 24.04.
 The port is published on loopback only, because x11vnc runs without a password
 inside the container.
 

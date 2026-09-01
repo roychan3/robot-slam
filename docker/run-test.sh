@@ -23,7 +23,7 @@ if [[ ! "${test_timeout}" =~ ^[1-9][0-9]*$ ]]; then
   exit 2
 fi
 
-image="${ROBOT_SLAM_IMAGE:-robot-slam:noetic}"
+image="${ROBOT_SLAM_IMAGE:-robot-slam:jazzy-harmonic}"
 container="robot-slam-test-${test_program%.py}-$$"
 
 cleanup() {
@@ -39,7 +39,7 @@ docker run --rm --detach --shm-size=1g --name "${container}" "${image}" >/dev/nu
 ros_ready=false
 for ((attempt = 1; attempt <= startup_timeout; attempt++)); do
   if docker exec "${container}" bash -c \
-    'source /opt/ros/noetic/setup.bash && rosnode list >/dev/null 2>&1'; then
+    'source /opt/ros/jazzy/setup.bash && ros2 node list 2>/dev/null | grep -q .'; then
     ros_ready=true
     break
   fi
@@ -47,7 +47,7 @@ for ((attempt = 1; attempt <= startup_timeout; attempt++)); do
 done
 
 if [[ "${ros_ready}" != true ]]; then
-  echo "ROS master did not become ready within ${startup_timeout} seconds" >&2
+  echo "The ROS 2 graph did not become ready within ${startup_timeout} seconds" >&2
   docker logs "${container}" >&2
   exit 1
 fi
@@ -56,9 +56,9 @@ set +e
 docker exec "${container}" \
   timeout --foreground --signal=TERM --kill-after=10s "${test_timeout}s" \
   bash -c \
-  'source /opt/ros/noetic/setup.bash
-   source /app/catkin_ws/devel/setup.bash
-   exec rosrun robot_slam "$1"' \
+  'source /opt/ros/jazzy/setup.bash
+   source /app/ros2_ws/install/setup.bash
+   exec ros2 run robot_slam "$1"' \
   _ "${test_program}"
 test_status=$?
 set -e

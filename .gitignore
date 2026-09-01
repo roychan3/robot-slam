@@ -65,15 +65,14 @@ ipython_config.py
 
 # ---- robot-slam project-specific ----
 
-# catkin output from a host-side build. `build/` above already matches at any
-# depth, but devel/ and install/ are catkin-specific and need naming.
+# ROS workspace output. `build/` above already matches at any depth.
 devel/
 install/
+log/
 
 # Agent session exports. These run to tens of megabytes and land in the repo
 # root, where a `git add -A` would commit one permanently.
 trajectory-*.json
-.catkin_workspace
 
 # Recorded sensor data. Bags are large and rewritten often; keep them outside
 # the repository or under data/.

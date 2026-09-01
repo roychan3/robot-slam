@@ -2,7 +2,7 @@ services:
   slam:
     build:
       context: .
-    image: robot-slam:noetic
+    image: robot-slam:jazzy-harmonic
     environment:
       # Deliberately empty rather than ${DISPLAY}: this service is the headless
       # one, and inheriting a host DISPLAY would make the entrypoint skip Xvfb
@@ -24,11 +24,10 @@ services:
   ui:
     build:
       context: .
-    image: robot-slam:noetic
+    image: robot-slam:jazzy-harmonic
     profiles: ["ui"]
     environment:
       DISPLAY: ""
-      DISABLE_ROS1_EOL_WARNINGS: "1"
       ENABLE_NOVNC: "1"
       TURTLEBOT3_MODEL: waffle_pi
     user: "${HOST_UID:-10001}:${HOST_GID:-10001}"
@@ -38,5 +37,5 @@ services:
     volumes:
       - ./data:/data
     shm_size: "1gb"
-    command: ["roslaunch", "robot_slam", "robot_slam.launch", "gui:=true", "rviz:=true"]
+    command: ["ros2", "launch", "robot_slam", "robot_slam.launch.py", "gui:=true", "rviz:=true"]
     init: true
