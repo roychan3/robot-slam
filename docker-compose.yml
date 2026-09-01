@@ -28,6 +28,7 @@ services:
     profiles: ["ui"]
     environment:
       DISPLAY: ""
+      DISABLE_ROS1_EOL_WARNINGS: "1"
       ENABLE_NOVNC: "1"
       TURTLEBOT3_MODEL: waffle_pi
     user: "${HOST_UID:-10001}:${HOST_GID:-10001}"
@@ -37,5 +38,5 @@ services:
     volumes:
       - ./data:/data
     shm_size: "1gb"
-    command: ["roslaunch", "robot_slam", "robot_slam.launch", "gui:=true"]
+    command: ["roslaunch", "robot_slam", "robot_slam.launch", "gui:=true", "rviz:=true"]
     init: true

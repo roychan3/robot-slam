@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <applications>
+    <application class="gazebo" type="normal">
+      <position force="yes">
+        <x>0</x>
+        <y>0</y>
+        <monitor>1</monitor>
+      </position>
+      <size>
+        <width>50%</width>
+        <height>100%</height>
+      </size>
+      <fullscreen>no</fullscreen>
+      <maximized>no</maximized>
+    </application>
+    <application class="rviz" type="normal">
+      <position force="yes">
+        <x>640</x>
+        <y>0</y>
+        <monitor>1</monitor>
+      </position>
+      <size>
+        <width>50%</width>
+        <height>100%</height>
+      </size>
+      <focus>yes</focus>
+      <layer>above</layer>
+      <fullscreen>no</fullscreen>
+      <maximized>no</maximized>
+    </application>
+  </applications>
+</openbox_config>

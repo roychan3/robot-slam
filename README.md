@@ -127,15 +127,21 @@ docker compose exec slam bash -c \
   'source /opt/ros/noetic/setup.bash && source /app/catkin_ws/devel/setup.bash && rosrun robot_slam smoke_test.py'
 ```
 
-## Gazebo GUI
+## Browser UI
 
-The portable option is the browser-based UI, which also runs fully in Docker:
+The browser-based UI runs fully in Docker and includes both the Gazebo camera
+view and an RViz view of the map reconstructed by the robot:
 
 ```bash
 docker compose --profile ui up -d ui
 ```
 
 Open <http://127.0.0.1:6080/vnc.html?autoconnect=true&resize=scale>.
+
+RViz opens on the live `/map` occupancy grid and overlays the robot, current
+lidar returns, and accumulated 3D reconstruction. The UI places Gazebo and
+RViz side by side, so the simulation and the map stay visible together. The
+map fills in as the robot is driven around the environment.
 
 Ubuntu 20.04 ships noVNC 1.0, where `vnc.html` is the current entry point;
 `vnc_auto.html` still works but is a compatibility shim from the 0.x series.

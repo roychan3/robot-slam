@@ -18,6 +18,7 @@ RUN apt-get update \
         ros-noetic-octomap-server \
         ros-noetic-pcl-ros \
         ros-noetic-robot-state-publisher \
+        ros-noetic-rviz \
         ros-noetic-teleop-twist-keyboard \
         ros-noetic-turtlebot3-description \
         ros-noetic-xacro \
@@ -30,6 +31,7 @@ RUN apt-get update \
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         novnc \
+        openbox \
         websockify \
         x11-utils \
         x11vnc \

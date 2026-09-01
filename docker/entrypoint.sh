@@ -36,6 +36,11 @@ if [[ "${ENABLE_NOVNC:-0}" == "1" ]]; then
   if ! xdpyinfo -display "${DISPLAY}" >/dev/null 2>&1; then
     echo "entrypoint: ${DISPLAY} never became ready; see /tmp/xvfb.log" >&2
   else
+    # Browser/host shortcut handling makes Alt+Tab unreliable inside noVNC.
+    # Openbox applies class-based rules that keep Gazebo and RViz side by side.
+    openbox --sm-disable \
+      --config-file /app/catkin_ws/src/robot_slam/config/openbox.xml \
+      >/tmp/openbox.log 2>&1 &
     x11vnc -display "${DISPLAY}" -forever -shared -nopw -rfbport 5900 \
       >/tmp/x11vnc.log 2>&1 &
     websockify --web=/usr/share/novnc 6080 localhost:5900 \

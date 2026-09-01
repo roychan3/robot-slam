@@ -14,6 +14,6 @@ catkin_install_python(
 )
 
 install(
-  DIRECTORY launch urdf worlds
+  DIRECTORY config launch urdf worlds
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
