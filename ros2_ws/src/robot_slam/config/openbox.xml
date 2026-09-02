@@ -29,5 +29,19 @@
       <fullscreen>no</fullscreen>
       <maximized>no</maximized>
     </application>
+    <application class="Robotslamaccuracy" name="SLAM accuracy" type="normal">
+      <position force="yes">
+        <x>20</x>
+        <y>20</y>
+        <monitor>1</monitor>
+      </position>
+      <size>
+        <width>540</width>
+        <height>190</height>
+      </size>
+      <focus>no</focus>
+      <layer>above</layer>
+      <maximized>no</maximized>
+    </application>
   </applications>
 </openbox_config>

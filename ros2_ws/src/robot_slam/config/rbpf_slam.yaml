@@ -4,6 +4,7 @@ rbpf_slam:
     odom_topic: /odom
     map_topic: /rbpf/map
     pose_topic: /rbpf/pose
+    particle_topic: /rbpf/particles
     map_frame: rbpf_map
     odom_frame: odom
 

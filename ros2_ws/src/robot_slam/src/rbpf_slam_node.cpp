@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "geometry_msgs/msg/pose_array.hpp"
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
@@ -86,6 +87,8 @@ public:
     odom_topic_ = declare_parameter<std::string>("odom_topic", "/odom");
     map_topic_ = declare_parameter<std::string>("map_topic", "/rbpf/map");
     pose_topic_ = declare_parameter<std::string>("pose_topic", "/rbpf/pose");
+    particle_topic_ =
+      declare_parameter<std::string>("particle_topic", "/rbpf/particles");
     map_frame_ = declare_parameter<std::string>("map_frame", "rbpf_map");
     odom_frame_ = declare_parameter<std::string>("odom_frame", "odom");
     publish_tf_ = declare_parameter<bool>("publish_tf", false);
@@ -130,6 +133,8 @@ public:
     map_publisher_ = create_publisher<nav_msgs::msg::OccupancyGrid>(map_topic_, map_qos);
     pose_publisher_ =
       create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(pose_topic_, 10);
+    particle_publisher_ =
+      create_publisher<geometry_msgs::msg::PoseArray>(particle_topic_, 10);
     odom_subscription_ = create_subscription<nav_msgs::msg::Odometry>(
       odom_topic_, 20,
       std::bind(&RbpfSlamNode::odom_callback, this, std::placeholders::_1));
@@ -143,8 +148,9 @@ public:
 
     RCLCPP_INFO(
       get_logger(),
-      "RBPF SLAM ready with %d particles; publishing %s and %s in frame %s%s",
-      particle_count_, map_topic_.c_str(), pose_topic_.c_str(), map_frame_.c_str(),
+      "RBPF SLAM ready with %d particles; publishing %s, %s, and %s in frame %s%s",
+      particle_count_, map_topic_.c_str(), pose_topic_.c_str(), particle_topic_.c_str(),
+      map_frame_.c_str(),
       publish_tf_ ? " with map-to-odom TF" : " without TF (comparison mode)");
   }
 
@@ -554,6 +560,22 @@ private:
     pose_publisher_->publish(message);
   }
 
+  void publish_particles(const builtin_interfaces::msg::Time & stamp) const
+  {
+    geometry_msgs::msg::PoseArray message;
+    message.header.stamp = stamp;
+    message.header.frame_id = map_frame_;
+    message.poses.reserve(particles_.size());
+    for (const auto & particle : particles_) {
+      geometry_msgs::msg::Pose pose;
+      pose.position.x = particle.pose.x;
+      pose.position.y = particle.pose.y;
+      pose.orientation = quaternion_from_yaw(particle.pose.yaw);
+      message.poses.push_back(pose);
+    }
+    particle_publisher_->publish(message);
+  }
+
   void publish_map(
     const std::vector<float> & map, const builtin_interfaces::msg::Time & stamp) const
   {
@@ -618,6 +640,7 @@ private:
   {
     const PoseEstimate estimate = estimate_pose();
     publish_pose(estimate, stamp);
+    publish_particles(stamp);
     publish_transform(estimate, stamp);
     if (force_map || map_publish_due(stamp)) {
       publish_map(particles_[best_particle_index()].map, stamp);
@@ -684,6 +707,7 @@ private:
   std::string odom_topic_;
   std::string map_topic_;
   std::string pose_topic_;
+  std::string particle_topic_;
   std::string map_frame_;
   std::string odom_frame_;
   bool publish_tf_{false};
@@ -725,6 +749,7 @@ private:
 
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr map_publisher_;
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_publisher_;
+  rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr particle_publisher_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_subscription_;
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_subscription_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;

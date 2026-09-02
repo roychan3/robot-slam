@@ -48,6 +48,7 @@ def generate_launch_description():
                     "start_rbpf_slam": start_rbpf_slam,
                     "rbpf_publish_tf": rbpf_publish_tf,
                     "rbpf_map_frame": rbpf_map_frame,
+                    "show_accuracy": rviz,
                 }.items(),
             ),
             Node(

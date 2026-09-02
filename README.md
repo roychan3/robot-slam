@@ -153,15 +153,18 @@ in wall-clock seconds, so a wedged simulation cannot hang the run.
 | `/map` | `nav_msgs/msg/OccupancyGrid` | 2D SLAM Toolbox result |
 | `/rbpf/map` | `nav_msgs/msg/OccupancyGrid` | Optional RBPF occupancy map |
 | `/rbpf/pose` | `geometry_msgs/msg/PoseWithCovarianceStamped` | Optional RBPF pose estimate |
+| `/rbpf/particles` | `geometry_msgs/msg/PoseArray` | Current RBPF particle poses shown as orange arrows in RViz |
 | `/camera/depth/points` | `sensor_msgs/msg/PointCloud2` | Current RGB-D view |
 | `/octomap_point_cloud_centers` | `sensor_msgs/msg/PointCloud2` | Accumulated 3D environment |
 | `/cmd_vel` | `geometry_msgs/msg/Twist` | TurtleBot3 drive commands |
 | `/odom` | `nav_msgs/msg/Odometry` | Simulated wheel odometry |
+| `/ground_truth/pose` | `geometry_msgs/msg/PoseStamped` | Gazebo physics pose used only for live accuracy measurement |
 
 ## Verification
 
 The integration check starts a temporary container and verifies live odometry,
-lidar, depth cloud, SLAM Toolbox map, and accumulated 3D cloud:
+Gazebo ground truth, lidar, depth cloud, SLAM Toolbox map, and accumulated 3D
+cloud:
 
 ```bash
 ./docker/smoke-test.sh
@@ -189,7 +192,16 @@ Open
 RViz opens on the live `/map` occupancy grid and overlays the robot, current
 lidar returns, and accumulated 3D reconstruction. The UI places Gazebo and
 RViz side by side, so the simulation and the map stay visible together. The
-map fills in as the robot is driven around the environment.
+map fills in as the robot is driven around the environment. SLAM Toolbox uses
+the grayscale map layer, while RBPF uses the costmap color palette. Orange
+arrows show the actual RBPF particle population; red points are the live lidar
+transformed with SLAM Toolbox's pose. An always-visible
+accuracy panel compares SLAM Toolbox and RBPF localization against Gazebo's
+independent physics pose. For each algorithm it shows the current position and
+heading error followed by the running root-mean-square error (RMSE); lower
+values are better. Each estimator's initial frame is aligned to ground truth,
+so the values measure drift and scan-matching corrections rather than the
+arbitrary choice of map origin.
 
 The release-specific URL prevents browsers from mixing cached noVNC 1.0 files
 from the former Ubuntu 20.04 image with the noVNC 1.3 client in Ubuntu 24.04.

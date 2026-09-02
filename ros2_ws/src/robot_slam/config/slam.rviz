@@ -5,7 +5,8 @@ Panels:
       Expanded:
         - /Global Options1
         - /SLAM Toolbox map1
-        - /RBPF map1
+        - /RBPF map (color)1
+        - /RBPF particles1
         - /3D reconstruction1
       Splitter Ratio: 0.5
     Tree Height: 781
@@ -48,16 +49,33 @@ Visualization Manager:
       Value: true
     - Alpha: 0.45
       Class: rviz_default_plugins/Map
-      Color Scheme: map
+      Color Scheme: costmap
       Draw Behind: false
       Enabled: true
-      Name: RBPF map
+      Name: RBPF map (color)
       Topic:
         Depth: 5
         Durability Policy: Transient Local
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /rbpf/map
+      Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/PoseArray
+      Color: 255; 171; 64
+      Enabled: true
+      Head Length: 0.08
+      Head Radius: 0.04
+      Name: RBPF particles
+      Shaft Length: 0.12
+      Shaft Radius: 0.015
+      Shape: Arrow (3D)
+      Topic:
+        Depth: 10
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /rbpf/particles
       Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
@@ -119,7 +137,7 @@ Visualization Manager:
       Color Transformer: FlatColor
       Decay Time: 0
       Enabled: true
-      Name: Live lidar
+      Name: Live lidar (SLAM Toolbox pose)
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true

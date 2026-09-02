@@ -18,6 +18,14 @@
   gz_type_name: gz.msgs.Odometry
   direction: GZ_TO_ROS
 
+# This pose comes directly from Gazebo's physics state rather than wheel
+# odometry, giving the accuracy monitor an independent reference.
+- ros_topic_name: /ground_truth/pose
+  gz_topic_name: /model/turtlebot3_waffle_pi/pose
+  ros_type_name: geometry_msgs/msg/PoseStamped
+  gz_type_name: gz.msgs.Pose
+  direction: GZ_TO_ROS
+
 - ros_topic_name: /tf
   gz_topic_name: /tf
   ros_type_name: tf2_msgs/msg/TFMessage
@@ -44,4 +52,6 @@
   gz_type_name: gz.msgs.PointCloudPacked
   direction: GZ_TO_ROS
   qos_profile: SENSOR_DATA
-  frame_id: camera_depth_optical_frame
+  # Gazebo's packed XYZ values use the parent sensor-link convention
+  # (X forward, Y left, Z up), not the ROS optical convention.
+  frame_id: camera_link

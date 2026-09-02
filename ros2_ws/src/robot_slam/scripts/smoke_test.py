@@ -4,6 +4,7 @@
 import sys
 
 import rclpy
+from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import OccupancyGrid, Odometry
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.wait_for_message import wait_for_message
@@ -30,6 +31,7 @@ def main():
     node = rclpy.create_node("robot_slam_smoke_test")
     try:
         odom = wait(node, "/odom", Odometry)
+        ground_truth = wait(node, "/ground_truth/pose", PoseStamped)
         scan = wait(node, "/scan", LaserScan, sensor_data=True)
         raw_cloud = wait(
             node, "/camera/depth/points", PointCloud2, sensor_data=True
@@ -42,6 +44,10 @@ def main():
         finite_scan = sum(1 for value in scan.ranges if value < float("inf"))
         checks = {
             "odometry frame": odom.header.frame_id == "odom",
+            "Gazebo ground truth": (
+                ground_truth.header.frame_id == "robot_slam_indoor"
+                and abs(ground_truth.pose.position.x) > 0.1
+            ),
             "lidar returns": finite_scan > 20,
             "raw depth cloud": raw_cloud.width * raw_cloud.height > 100,
             "SLAM Toolbox grid": grid.info.width * grid.info.height > 0,

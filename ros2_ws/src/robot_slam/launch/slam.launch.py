@@ -32,6 +32,7 @@ def generate_launch_description():
     start_rbpf_slam = LaunchConfiguration("start_rbpf_slam")
     rbpf_publish_tf = LaunchConfiguration("rbpf_publish_tf")
     rbpf_map_frame = LaunchConfiguration("rbpf_map_frame")
+    show_accuracy = LaunchConfiguration("show_accuracy")
     safe_rbpf_publish_tf = PythonExpression(
         [
             "'",
@@ -52,6 +53,7 @@ def generate_launch_description():
             DeclareLaunchArgument("start_rbpf_slam", default_value="false"),
             DeclareLaunchArgument("rbpf_publish_tf", default_value="false"),
             DeclareLaunchArgument("rbpf_map_frame", default_value="rbpf_map"),
+            DeclareLaunchArgument("show_accuracy", default_value="false"),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(slam_toolbox_launch),
                 condition=IfCondition(start_slam_toolbox),
@@ -76,6 +78,22 @@ def generate_launch_description():
                         ),
                         "map_frame": rbpf_map_frame,
                     },
+                ],
+            ),
+            Node(
+                package="robot_slam",
+                executable="accuracy_monitor.py",
+                name="accuracy_monitor",
+                output="screen",
+                condition=IfCondition(show_accuracy),
+                parameters=[
+                    {
+                        "use_sim_time": True,
+                        "map_frame": "map",
+                        "base_frame": "base_footprint",
+                        "ground_truth_topic": "/ground_truth/pose",
+                        "rbpf_pose_topic": "/rbpf/pose",
+                    }
                 ],
             ),
             Node(

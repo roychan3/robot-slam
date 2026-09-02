@@ -11,6 +11,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         python3-colcon-common-extensions \
+        python3-tk \
         ros-jazzy-octomap-server \
         ros-jazzy-robot-state-publisher \
         ros-jazzy-ros-gz \
