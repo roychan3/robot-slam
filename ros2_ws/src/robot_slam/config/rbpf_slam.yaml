@@ -1,0 +1,43 @@
+rbpf_slam:
+  ros__parameters:
+    scan_topic: /scan
+    odom_topic: /odom
+    map_topic: /rbpf/map
+    pose_topic: /rbpf/pose
+    map_frame: rbpf_map
+    odom_frame: odom
+
+    # Keep TF disabled while SLAM Toolbox is active: two estimators must not
+    # both publish a parent transform for the same odom frame.
+    publish_tf: false
+
+    particle_count: 30
+    random_seed: 42
+    resolution: 0.05
+    map_width: 400
+    map_height: 400
+    origin_x: -10.0
+    origin_y: -10.0
+    max_range: 7.5
+    max_beams: 90
+    minimum_travel_distance: 0.10
+    minimum_travel_heading: 0.08
+
+    linear_motion_noise: 0.05
+    angular_motion_noise: 0.05
+    motion_noise_floor: 0.005
+    scan_match_linear_window: 0.15
+    scan_match_angular_window: 0.12
+    scan_match_linear_step: 0.05
+    scan_match_angular_step: 0.04
+    likelihood_gain: 30.0
+    resample_threshold: 0.5
+
+    hit_log_odds: 0.85
+    miss_log_odds: -0.40
+    map_publish_interval: 1.0
+
+    # Planar base_footprint -> base_scan extrinsics from the bundled URDF.
+    laser_x: -0.032
+    laser_y: 0.0
+    laser_yaw: 0.0

@@ -17,6 +17,10 @@ def generate_launch_description():
     rviz = LaunchConfiguration("rviz")
     paused = LaunchConfiguration("paused")
     start_octomap = LaunchConfiguration("start_octomap")
+    start_slam_toolbox = LaunchConfiguration("start_slam_toolbox")
+    start_rbpf_slam = LaunchConfiguration("start_rbpf_slam")
+    rbpf_publish_tf = LaunchConfiguration("rbpf_publish_tf")
+    rbpf_map_frame = LaunchConfiguration("rbpf_map_frame")
 
     return LaunchDescription(
         [
@@ -24,6 +28,10 @@ def generate_launch_description():
             DeclareLaunchArgument("rviz", default_value="false"),
             DeclareLaunchArgument("paused", default_value="false"),
             DeclareLaunchArgument("start_octomap", default_value="true"),
+            DeclareLaunchArgument("start_slam_toolbox", default_value="true"),
+            DeclareLaunchArgument("start_rbpf_slam", default_value="false"),
+            DeclareLaunchArgument("rbpf_publish_tf", default_value="false"),
+            DeclareLaunchArgument("rbpf_map_frame", default_value="rbpf_map"),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     PathJoinSubstitution([launch_dir, "simulation.launch.py"])
@@ -34,7 +42,13 @@ def generate_launch_description():
                 PythonLaunchDescriptionSource(
                     PathJoinSubstitution([launch_dir, "slam.launch.py"])
                 ),
-                launch_arguments={"start_octomap": start_octomap}.items(),
+                launch_arguments={
+                    "start_octomap": start_octomap,
+                    "start_slam_toolbox": start_slam_toolbox,
+                    "start_rbpf_slam": start_rbpf_slam,
+                    "rbpf_publish_tf": rbpf_publish_tf,
+                    "rbpf_map_frame": rbpf_map_frame,
+                }.items(),
             ),
             Node(
                 package="rviz2",

@@ -4,7 +4,8 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /Reconstructed map1
+        - /SLAM Toolbox map1
+        - /RBPF map1
         - /3D reconstruction1
       Splitter Ratio: 0.5
     Tree Height: 781
@@ -31,7 +32,7 @@ Visualization Manager:
       Color Scheme: map
       Draw Behind: true
       Enabled: true
-      Name: Reconstructed map
+      Name: SLAM Toolbox map
       Topic:
         Depth: 5
         Durability Policy: Transient Local
@@ -44,6 +45,19 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /map_updates
+      Value: true
+    - Alpha: 0.45
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: true
+      Name: RBPF map
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /rbpf/map
       Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true

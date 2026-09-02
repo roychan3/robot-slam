@@ -13,6 +13,10 @@ SLAM Toolbox handles 2D lidar SLAM; the RGB-D/OctoMap branch adds the 3D
 representation. Gazebo and ROS communicate through `ros_gz_bridge` while the
 public ROS topic names remain unchanged from the earlier Classic-based stack.
 
+An optional educational Rao-Blackwellized particle-filter (RBPF) backend is
+also included. It can run beside SLAM Toolbox on the same lidar and odometry
+stream, publishing separate outputs so the two estimates can be compared.
+
 ## Run
 
 Docker and Docker Compose are the only host requirements.
@@ -45,6 +49,46 @@ environment:
 docker compose exec slam bash -c \
   'source /opt/ros/jazzy/setup.bash && source /app/ros2_ws/install/setup.bash && ros2 run teleop_twist_keyboard teleop_twist_keyboard'
 ```
+
+### Run both 2D SLAM algorithms
+
+SLAM Toolbox remains the default. The `ui` profile already runs both, with the
+two maps overlaid in RViz:
+
+```bash
+docker compose --profile ui up -d ui
+```
+
+Headless, without the browser view:
+
+```bash
+docker compose run --rm slam ros2 launch robot_slam robot_slam.launch.py \
+  gui:=false start_rbpf_slam:=true rbpf_map_frame:=map
+```
+
+Both estimators consume `/scan` and `/odom`. SLAM Toolbox continues to publish
+`/map` and the `map -> odom` transform; RBPF publishes `/rbpf/map` and
+`/rbpf/pose`. RBPF deliberately does not publish TF in this mode, avoiding two
+SLAM nodes assigning competing parents to `odom` — the launch derives that from
+`start_slam_toolbox` rather than exposing it, so the conflict is unreachable.
+
+Both commands pass `rbpf_map_frame:=map` so the two grids share a frame and can
+be compared directly. RBPF's own default is a separate `rbpf_map` frame, which
+keeps the topics independent but leaves nothing publishing a transform to that
+frame, so RViz cannot draw it.
+
+To run RBPF by itself as the primary 2D backend:
+
+```bash
+docker compose run --rm slam ros2 launch robot_slam robot_slam.launch.py \
+  gui:=false start_slam_toolbox:=false start_rbpf_slam:=true \
+  rbpf_publish_tf:=true rbpf_map_frame:=map
+```
+
+RBPF tuning parameters—including particle count, motion noise, scan-matching
+window, and map resolution—are in `config/rbpf_slam.yaml`. The implementation
+uses a deterministic random seed by default so repeated comparison runs are
+reproducible.
 
 Save the accumulated 3D environment to the host's `data/` directory:
 
@@ -105,8 +149,10 @@ in wall-clock seconds, so a wedged simulation cannot hang the run.
 
 | Topic | Type | Purpose |
 | --- | --- | --- |
-| `/scan` | `sensor_msgs/msg/LaserScan` | 360° lidar input to SLAM Toolbox |
+| `/scan` | `sensor_msgs/msg/LaserScan` | 360° lidar input to both 2D SLAM backends |
 | `/map` | `nav_msgs/msg/OccupancyGrid` | 2D SLAM Toolbox result |
+| `/rbpf/map` | `nav_msgs/msg/OccupancyGrid` | Optional RBPF occupancy map |
+| `/rbpf/pose` | `geometry_msgs/msg/PoseWithCovarianceStamped` | Optional RBPF pose estimate |
 | `/camera/depth/points` | `sensor_msgs/msg/PointCloud2` | Current RGB-D view |
 | `/octomap_point_cloud_centers` | `sensor_msgs/msg/PointCloud2` | Accumulated 3D environment |
 | `/cmd_vel` | `geometry_msgs/msg/Twist` | TurtleBot3 drive commands |
