@@ -13,9 +13,12 @@ SLAM Toolbox handles 2D lidar SLAM; the RGB-D/OctoMap branch adds the 3D
 representation. Gazebo and ROS communicate through `ros_gz_bridge` while the
 public ROS topic names remain unchanged from the earlier Classic-based stack.
 
-An optional educational Rao-Blackwellized particle-filter (RBPF) backend is
-also included. It can run beside SLAM Toolbox on the same lidar and odometry
-stream, publishing separate outputs so the two estimates can be compared.
+Optional educational Rao-Blackwellized particle-filter (RBPF) and extended
+Kalman filter (EKF) backends are also included. They can run beside SLAM
+Toolbox on the same lidar and odometry stream, publishing separate outputs so
+all three estimates can be compared. The EKF tracks the planar robot pose,
+uses scan matching as its lidar measurement, and builds a single occupancy
+grid from the corrected poses.
 
 ## Run
 
@@ -42,7 +45,7 @@ macOS Docker Desktop maps ownership itself and needs no override. If you skip
 this on Linux, the simulation still runs and the entrypoint prints a warning —
 only saving to `/data` fails.
 
-Drive the robot manually from another terminal so both maps cover the
+Drive the robot manually from another terminal so all maps cover the
 environment:
 
 ```bash
@@ -50,10 +53,10 @@ docker compose exec slam bash -c \
   'source /opt/ros/jazzy/setup.bash && source /app/ros2_ws/install/setup.bash && ros2 run teleop_twist_keyboard teleop_twist_keyboard'
 ```
 
-### Run both 2D SLAM algorithms
+### Compare all 2D SLAM algorithms
 
-SLAM Toolbox remains the default. The `ui` profile already runs both, with the
-two maps overlaid in RViz:
+SLAM Toolbox remains the default. The `ui` profile runs all three, with their
+maps overlaid in RViz:
 
 ```bash
 docker compose --profile ui up -d ui
@@ -63,32 +66,46 @@ Headless, without the browser view:
 
 ```bash
 docker compose run --rm slam ros2 launch robot_slam robot_slam.launch.py \
-  gui:=false start_rbpf_slam:=true rbpf_map_frame:=map
+  gui:=false start_rbpf_slam:=true start_ekf_slam:=true
 ```
 
-Both estimators consume `/scan` and `/odom`. SLAM Toolbox continues to publish
+All estimators consume `/scan` and `/odom`. SLAM Toolbox continues to publish
 `/map` and the `map -> odom` transform; RBPF publishes `/rbpf/map` and
-`/rbpf/pose`. RBPF deliberately does not publish TF in this mode, avoiding two
-SLAM nodes assigning competing parents to `odom` — the launch derives that from
-`start_slam_toolbox` rather than exposing it, so the conflict is unreachable.
+`/rbpf/pose`, while EKF publishes `/ekf/map` and `/ekf/pose`. The comparison
+backends deliberately do not publish TF in this mode, avoiding multiple SLAM
+nodes assigning competing parents to `odom`. Launch-time guards suppress all
+custom TF publication if SLAM Toolbox is active or if both custom backends
+request ownership at once.
 
-Both commands pass `rbpf_map_frame:=map` so the two grids share a frame and can
-be compared directly. RBPF's own default is a separate `rbpf_map` frame, which
-keeps the topics independent but leaves nothing publishing a transform to that
-frame, so RViz cannot draw it.
+Both custom grids use the `map` frame by default, so RViz can draw them without
+an additional static transform. Their topics remain independent. Override a
+backend's map frame only when also providing a transform to RViz's fixed frame.
 
 To run RBPF by itself as the primary 2D backend:
 
 ```bash
 docker compose run --rm slam ros2 launch robot_slam robot_slam.launch.py \
   gui:=false start_slam_toolbox:=false start_rbpf_slam:=true \
-  rbpf_publish_tf:=true rbpf_map_frame:=map
+  rbpf_publish_tf:=true
 ```
 
 RBPF tuning parameters—including particle count, motion noise, scan-matching
 window, and map resolution—are in `config/rbpf_slam.yaml`. The implementation
 uses a deterministic random seed by default so repeated comparison runs are
 reproducible.
+
+To run EKF by itself as the primary 2D backend:
+
+```bash
+docker compose run --rm slam ros2 launch robot_slam robot_slam.launch.py \
+  gui:=false start_slam_toolbox:=false start_ekf_slam:=true \
+  ekf_publish_tf:=true
+```
+
+EKF process and measurement variances, scan-matching thresholds, and occupancy
+grid parameters are in `config/ekf_slam.yaml`. Its state and covariance are the
+planar pose `[x, y, yaw]`; wheel odometry drives the nonlinear prediction and
+the best lidar-to-grid match provides the correction.
 
 Save the accumulated 3D environment to the host's `data/` directory:
 
@@ -149,11 +166,13 @@ in wall-clock seconds, so a wedged simulation cannot hang the run.
 
 | Topic | Type | Purpose |
 | --- | --- | --- |
-| `/scan` | `sensor_msgs/msg/LaserScan` | 360° lidar input to both 2D SLAM backends |
+| `/scan` | `sensor_msgs/msg/LaserScan` | 360° lidar input to all 2D SLAM backends |
 | `/map` | `nav_msgs/msg/OccupancyGrid` | 2D SLAM Toolbox result |
 | `/rbpf/map` | `nav_msgs/msg/OccupancyGrid` | Optional RBPF occupancy map |
 | `/rbpf/pose` | `geometry_msgs/msg/PoseWithCovarianceStamped` | Optional RBPF pose estimate |
 | `/rbpf/particles` | `geometry_msgs/msg/PoseArray` | Current RBPF particle poses shown as orange arrows in RViz |
+| `/ekf/map` | `nav_msgs/msg/OccupancyGrid` | Optional EKF occupancy map |
+| `/ekf/pose` | `geometry_msgs/msg/PoseWithCovarianceStamped` | Optional EKF pose and covariance estimate |
 | `/camera/depth/points` | `sensor_msgs/msg/PointCloud2` | Current RGB-D view |
 | `/octomap_point_cloud_centers` | `sensor_msgs/msg/PointCloud2` | Accumulated 3D environment |
 | `/cmd_vel` | `geometry_msgs/msg/Twist` | TurtleBot3 drive commands |
@@ -218,10 +237,11 @@ RViz opens on the live `/map` occupancy grid and overlays the robot, current
 lidar returns, and accumulated 3D reconstruction. The UI places Gazebo and
 RViz side by side, so the simulation and the map stay visible together. The
 map fills in as the robot is driven around the environment. SLAM Toolbox uses
-the grayscale map layer, while RBPF uses the costmap color palette. Orange
-arrows show the actual RBPF particle population; red points are the live lidar
-transformed with SLAM Toolbox's pose. An always-visible
-accuracy panel compares SLAM Toolbox and RBPF localization against Gazebo's
+the grayscale map layer, RBPF uses the costmap palette, and EKF uses the raw
+palette. Orange arrows show the actual RBPF particle population, while a green
+arrow and ellipse show the EKF pose and covariance; red points are the live
+lidar transformed with SLAM Toolbox's pose. An always-visible
+accuracy panel compares all three estimates against Gazebo's
 independent physics pose. For each algorithm it shows the current position and
 heading error followed by the running root-mean-square error (RMSE); lower
 values are better. Each estimator's initial frame is aligned to ground truth,

@@ -7,6 +7,8 @@ Panels:
         - /SLAM Toolbox map1
         - /RBPF map (color)1
         - /RBPF particles1
+        - /EKF map (color)1
+        - /EKF pose1
         - /3D reconstruction1
       Splitter Ratio: 0.5
     Tree Height: 781
@@ -76,6 +78,50 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /rbpf/particles
+      Value: true
+    - Alpha: 0.4
+      Class: rviz_default_plugins/Map
+      Color Scheme: raw
+      Draw Behind: false
+      Enabled: true
+      Name: EKF map (color)
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /ekf/map
+      Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/PoseWithCovariance
+      Color: 129; 199; 132
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 129; 199; 132
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.35
+          Color: 129; 199; 132
+          Scale: 1
+          Value: true
+      Enabled: true
+      Head Length: 0.12
+      Head Radius: 0.06
+      Name: EKF pose
+      Shaft Length: 0.28
+      Shaft Radius: 0.025
+      Shape: Arrow (3D)
+      Topic:
+        Depth: 10
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /ekf/pose
       Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true

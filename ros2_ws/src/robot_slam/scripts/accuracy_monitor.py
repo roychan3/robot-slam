@@ -115,13 +115,18 @@ class AccuracyMonitor(Node):
         rbpf_pose_topic = self.declare_parameter(
             "rbpf_pose_topic", "/rbpf/pose"
         ).value
+        ekf_pose_topic = self.declare_parameter(
+            "ekf_pose_topic", "/ekf/pose"
+        ).value
 
         self.truth = None
         self.truth_stamp = None
         self.last_sampled_truth_stamp = None
         self.rbpf_pose = None
+        self.ekf_pose = None
         self.slam_stats = ErrorStats()
         self.rbpf_stats = ErrorStats()
+        self.ekf_stats = ErrorStats()
 
         self.create_subscription(
             PoseStamped, ground_truth_topic, self._truth_callback, 10
@@ -130,6 +135,12 @@ class AccuracyMonitor(Node):
             PoseWithCovarianceStamped,
             rbpf_pose_topic,
             self._rbpf_callback,
+            10,
+        )
+        self.create_subscription(
+            PoseWithCovarianceStamped,
+            ekf_pose_topic,
+            self._ekf_callback,
             10,
         )
         self.tf_buffer = Buffer(cache_time=Duration(seconds=10.0))
@@ -148,13 +159,18 @@ class AccuracyMonitor(Node):
         if self.truth_stamp is not None and stamp < self.truth_stamp:
             self.slam_stats.reset()
             self.rbpf_stats.reset()
+            self.ekf_stats.reset()
             self.last_sampled_truth_stamp = None
             self.rbpf_pose = None
+            self.ekf_pose = None
         self.truth_stamp = stamp
         self.truth = self._pose_from_message(message.pose)
 
     def _rbpf_callback(self, message: PoseWithCovarianceStamped):
         self.rbpf_pose = self._pose_from_message(message.pose.pose)
+
+    def _ekf_callback(self, message: PoseWithCovarianceStamped):
+        self.ekf_pose = self._pose_from_message(message.pose.pose)
 
     def _slam_pose(self):
         try:
@@ -182,6 +198,8 @@ class AccuracyMonitor(Node):
             self.slam_stats.update(slam_pose, self.truth)
         if self.rbpf_pose is not None:
             self.rbpf_stats.update(self.rbpf_pose, self.truth)
+        if self.ekf_pose is not None:
+            self.ekf_stats.update(self.ekf_pose, self.truth)
         self.last_sampled_truth_stamp = self.truth_stamp
 
 
@@ -190,7 +208,7 @@ class AccuracyWindow:
         self.monitor = monitor
         self.root = tk.Tk(className="RobotSlamAccuracy")
         self.root.title("SLAM accuracy")
-        self.root.geometry("540x190+20+20")
+        self.root.geometry("540x220+20+20")
         self.root.resizable(False, False)
         self.root.configure(background="#20242b")
         self.root.attributes("-topmost", True)
@@ -213,8 +231,10 @@ class AccuracyWindow:
 
         self.slam_text = tk.StringVar(value="Waiting for SLAM Toolbox pose…")
         self.rbpf_text = tk.StringVar(value="Waiting for RBPF pose…")
+        self.ekf_text = tk.StringVar(value="Waiting for EKF pose…")
         self._metric_row("SLAM Toolbox", self.slam_text, "#4fc3f7")
         self._metric_row("RBPF", self.rbpf_text, "#ffb74d")
+        self._metric_row("EKF", self.ekf_text, "#81c784")
 
         tk.Label(
             self.root,
@@ -267,6 +287,7 @@ class AccuracyWindow:
         self.monitor.sample()
         self.slam_text.set(self._format(self.monitor.slam_stats))
         self.rbpf_text.set(self._format(self.monitor.rbpf_stats))
+        self.ekf_text.set(self._format(self.monitor.ekf_stats))
         self.root.after(100, self._update)
 
     def _close(self):

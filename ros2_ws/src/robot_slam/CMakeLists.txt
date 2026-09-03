@@ -19,6 +19,17 @@ ament_target_dependencies(
   tf2_ros
 )
 
+add_executable(ekf_slam_node src/ekf_slam_node.cpp)
+target_compile_features(ekf_slam_node PUBLIC cxx_std_17)
+ament_target_dependencies(
+  ekf_slam_node
+  geometry_msgs
+  nav_msgs
+  rclcpp
+  sensor_msgs
+  tf2_ros
+)
+
 install(PROGRAMS
   scripts/accuracy_monitor.py
   scripts/loop_closure_test.py
@@ -27,7 +38,7 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-install(TARGETS rbpf_slam_node
+install(TARGETS ekf_slam_node rbpf_slam_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

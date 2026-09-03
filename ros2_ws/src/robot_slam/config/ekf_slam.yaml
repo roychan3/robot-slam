@@ -1,19 +1,16 @@
-rbpf_slam:
+ekf_slam:
   ros__parameters:
     scan_topic: /scan
     odom_topic: /odom
-    map_topic: /rbpf/map
-    pose_topic: /rbpf/pose
-    particle_topic: /rbpf/particles
+    map_topic: /ekf/map
+    pose_topic: /ekf/pose
     map_frame: map
     odom_frame: odom
 
-    # Keep TF disabled while SLAM Toolbox is active: two estimators must not
-    # both publish a parent transform for the same odom frame.
+    # Only one SLAM backend may publish map -> odom. The launch file enforces
+    # this when multiple estimators are enabled for comparison.
     publish_tf: false
 
-    particle_count: 30
-    random_seed: 42
     resolution: 0.05
     map_width: 400
     map_height: 400
@@ -27,12 +24,16 @@ rbpf_slam:
     linear_motion_noise: 0.05
     angular_motion_noise: 0.05
     motion_noise_floor: 0.005
-    scan_match_linear_window: 0.15
-    scan_match_angular_window: 0.12
+    initial_position_variance: 0.0001
+    initial_heading_variance: 0.0001
+    measurement_position_variance: 0.01
+    measurement_heading_variance: 0.0064
+
+    scan_match_linear_window: 0.20
+    scan_match_angular_window: 0.16
     scan_match_linear_step: 0.05
     scan_match_angular_step: 0.04
-    likelihood_gain: 30.0
-    resample_threshold: 0.5
+    minimum_scan_score: 0.52
 
     hit_log_odds: 0.85
     miss_log_odds: -0.40

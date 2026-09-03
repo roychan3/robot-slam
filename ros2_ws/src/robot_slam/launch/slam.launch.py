@@ -31,6 +31,9 @@ def generate_launch_description():
     rbpf_config = PathJoinSubstitution(
         [package_share, "config", "rbpf_slam.yaml"]
     )
+    ekf_config = PathJoinSubstitution(
+        [package_share, "config", "ekf_slam.yaml"]
+    )
     slam_toolbox_launch = PathJoinSubstitution(
         [FindPackageShare("slam_toolbox"), "launch", "online_async_launch.py"]
     )
@@ -39,8 +42,11 @@ def generate_launch_description():
     start_octomap = LaunchConfiguration("start_octomap")
     start_slam_toolbox = LaunchConfiguration("start_slam_toolbox")
     start_rbpf_slam = LaunchConfiguration("start_rbpf_slam")
+    start_ekf_slam = LaunchConfiguration("start_ekf_slam")
     rbpf_publish_tf = LaunchConfiguration("rbpf_publish_tf")
     rbpf_map_frame = LaunchConfiguration("rbpf_map_frame")
+    ekf_publish_tf = LaunchConfiguration("ekf_publish_tf")
+    ekf_map_frame = LaunchConfiguration("ekf_map_frame")
     show_accuracy = LaunchConfiguration("show_accuracy")
     safe_rbpf_publish_tf = PythonExpression(
         [
@@ -48,7 +54,24 @@ def generate_launch_description():
             rbpf_publish_tf,
             "'.lower() == 'true' and '",
             start_slam_toolbox,
-            "'.lower() != 'true'",
+            "'.lower() != 'true' and not ('",
+            start_ekf_slam,
+            "'.lower() == 'true' and '",
+            ekf_publish_tf,
+            "'.lower() == 'true')",
+        ]
+    )
+    safe_ekf_publish_tf = PythonExpression(
+        [
+            "'",
+            ekf_publish_tf,
+            "'.lower() == 'true' and '",
+            start_slam_toolbox,
+            "'.lower() != 'true' and not ('",
+            start_rbpf_slam,
+            "'.lower() == 'true' and '",
+            rbpf_publish_tf,
+            "'.lower() == 'true')",
         ]
     )
 
@@ -60,8 +83,11 @@ def generate_launch_description():
             DeclareLaunchArgument("start_octomap", default_value="true"),
             DeclareLaunchArgument("start_slam_toolbox", default_value="true"),
             DeclareLaunchArgument("start_rbpf_slam", default_value="false"),
+            DeclareLaunchArgument("start_ekf_slam", default_value="false"),
             DeclareLaunchArgument("rbpf_publish_tf", default_value="false"),
-            DeclareLaunchArgument("rbpf_map_frame", default_value="rbpf_map"),
+            DeclareLaunchArgument("rbpf_map_frame", default_value="map"),
+            DeclareLaunchArgument("ekf_publish_tf", default_value="false"),
+            DeclareLaunchArgument("ekf_map_frame", default_value="map"),
             DeclareLaunchArgument("show_accuracy", default_value="false"),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(slam_toolbox_launch),
@@ -91,6 +117,23 @@ def generate_launch_description():
             ),
             Node(
                 package="robot_slam",
+                executable="ekf_slam_node",
+                name="ekf_slam",
+                output="screen",
+                condition=IfCondition(start_ekf_slam),
+                parameters=[
+                    ekf_config,
+                    {
+                        "use_sim_time": True,
+                        "publish_tf": ParameterValue(
+                            safe_ekf_publish_tf, value_type=bool
+                        ),
+                        "map_frame": ekf_map_frame,
+                    },
+                ],
+            ),
+            Node(
+                package="robot_slam",
                 executable="accuracy_monitor.py",
                 name="accuracy_monitor",
                 output="screen",
@@ -102,6 +145,7 @@ def generate_launch_description():
                         "base_frame": "base_footprint",
                         "ground_truth_topic": "/ground_truth/pose",
                         "rbpf_pose_topic": "/rbpf/pose",
+                        "ekf_pose_topic": "/ekf/pose",
                     }
                 ],
             ),

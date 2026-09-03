@@ -45,5 +45,5 @@ services:
       - gui:=true
       - rviz:=true
       - start_rbpf_slam:=true
-      - rbpf_map_frame:=map
+      - start_ekf_slam:=true
     init: true

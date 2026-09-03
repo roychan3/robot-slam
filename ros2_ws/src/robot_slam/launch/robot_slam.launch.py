@@ -29,8 +29,11 @@ def generate_launch_description():
     start_octomap = LaunchConfiguration("start_octomap")
     start_slam_toolbox = LaunchConfiguration("start_slam_toolbox")
     start_rbpf_slam = LaunchConfiguration("start_rbpf_slam")
+    start_ekf_slam = LaunchConfiguration("start_ekf_slam")
     rbpf_publish_tf = LaunchConfiguration("rbpf_publish_tf")
     rbpf_map_frame = LaunchConfiguration("rbpf_map_frame")
+    ekf_publish_tf = LaunchConfiguration("ekf_publish_tf")
+    ekf_map_frame = LaunchConfiguration("ekf_map_frame")
 
     return LaunchDescription(
         [
@@ -40,8 +43,11 @@ def generate_launch_description():
             DeclareLaunchArgument("start_octomap", default_value="true"),
             DeclareLaunchArgument("start_slam_toolbox", default_value="true"),
             DeclareLaunchArgument("start_rbpf_slam", default_value="false"),
+            DeclareLaunchArgument("start_ekf_slam", default_value="false"),
             DeclareLaunchArgument("rbpf_publish_tf", default_value="false"),
-            DeclareLaunchArgument("rbpf_map_frame", default_value="rbpf_map"),
+            DeclareLaunchArgument("rbpf_map_frame", default_value="map"),
+            DeclareLaunchArgument("ekf_publish_tf", default_value="false"),
+            DeclareLaunchArgument("ekf_map_frame", default_value="map"),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     PathJoinSubstitution([launch_dir, "simulation.launch.py"])
@@ -56,8 +62,11 @@ def generate_launch_description():
                     "start_octomap": start_octomap,
                     "start_slam_toolbox": start_slam_toolbox,
                     "start_rbpf_slam": start_rbpf_slam,
+                    "start_ekf_slam": start_ekf_slam,
                     "rbpf_publish_tf": rbpf_publish_tf,
                     "rbpf_map_frame": rbpf_map_frame,
+                    "ekf_publish_tf": ekf_publish_tf,
+                    "ekf_map_frame": ekf_map_frame,
                     "show_accuracy": rviz,
                 }.items(),
             ),
