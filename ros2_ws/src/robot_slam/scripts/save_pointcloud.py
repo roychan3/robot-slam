@@ -6,11 +6,13 @@ import math
 import os
 import sys
 
-import rclpy
-from rclpy.utilities import remove_ros_args
-from rclpy.wait_for_message import wait_for_message
-from sensor_msgs.msg import PointCloud2
-from sensor_msgs_py import point_cloud2
+import rclpy  # pyright: ignore[reportMissingImports]
+from rclpy.utilities import remove_ros_args  # pyright: ignore[reportMissingImports]
+from rclpy.wait_for_message import (  # pyright: ignore[reportMissingImports]
+    wait_for_message,
+)
+from sensor_msgs.msg import PointCloud2  # pyright: ignore[reportMissingImports]
+from sensor_msgs_py import point_cloud2  # pyright: ignore[reportMissingImports]
 
 
 def parse_args():

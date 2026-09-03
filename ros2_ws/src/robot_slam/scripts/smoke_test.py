@@ -2,16 +2,38 @@
 """Integration smoke test for the running Gazebo / ROS 2 SLAM graph."""
 
 import sys
+from typing import TypeVar
 
-import rclpy
-from geometry_msgs.msg import PoseStamped
-from nav_msgs.msg import OccupancyGrid, Odometry
-from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from rclpy.wait_for_message import wait_for_message
-from sensor_msgs.msg import LaserScan, PointCloud2
+import rclpy  # pyright: ignore[reportMissingImports]
+from geometry_msgs.msg import PoseStamped  # pyright: ignore[reportMissingImports]
+from nav_msgs.msg import (  # pyright: ignore[reportMissingImports]
+    OccupancyGrid,
+    Odometry,
+)
+from rclpy.qos import (  # pyright: ignore[reportMissingImports]
+    DurabilityPolicy,
+    QoSProfile,
+    ReliabilityPolicy,
+)
+from rclpy.node import Node  # pyright: ignore[reportMissingImports]
+from rclpy.wait_for_message import (  # pyright: ignore[reportMissingImports]
+    wait_for_message,
+)
+from sensor_msgs.msg import (  # pyright: ignore[reportMissingImports]
+    LaserScan,
+    PointCloud2,
+)
+
+MessageT = TypeVar("MessageT")
 
 
-def wait(node, topic, msg_type, timeout=60.0, sensor_data=False):
+def wait(
+    node: Node,
+    topic: str,
+    msg_type: type[MessageT],
+    timeout: float = 60.0,
+    sensor_data: bool = False,
+) -> MessageT:
     node.get_logger().info(f"Waiting for {topic}")
     qos = QoSProfile(depth=10)
     if sensor_data:

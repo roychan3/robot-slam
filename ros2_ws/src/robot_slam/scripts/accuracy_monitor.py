@@ -5,12 +5,21 @@ import math
 import tkinter as tk
 from dataclasses import dataclass
 
-import rclpy
-from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
-from rclpy.duration import Duration
-from rclpy.node import Node
-from rclpy.time import Time
-from tf2_ros import Buffer, TransformException, TransformListener
+import rclpy  # pyright: ignore[reportMissingImports]
+from geometry_msgs.msg import (  # pyright: ignore[reportMissingImports]
+    Pose,
+    PoseStamped,
+    PoseWithCovarianceStamped,
+    Quaternion,
+)
+from rclpy.duration import Duration  # pyright: ignore[reportMissingImports]
+from rclpy.node import Node  # pyright: ignore[reportMissingImports]
+from rclpy.time import Time  # pyright: ignore[reportMissingImports]
+from tf2_ros import (  # pyright: ignore[reportMissingImports]
+    Buffer,
+    TransformException,
+    TransformListener,
+)
 
 
 @dataclass(frozen=True)
@@ -20,11 +29,11 @@ class Pose2D:
     yaw: float
 
 
-def normalize_angle(angle):
+def normalize_angle(angle: float):
     return math.atan2(math.sin(angle), math.cos(angle))
 
 
-def quaternion_yaw(quaternion):
+def quaternion_yaw(quaternion: Quaternion):
     siny_cosp = 2.0 * (
         quaternion.w * quaternion.z + quaternion.x * quaternion.y
     )
@@ -34,7 +43,7 @@ def quaternion_yaw(quaternion):
     return math.atan2(siny_cosp, cosy_cosp)
 
 
-def compose(left, right):
+def compose(left: Pose2D, right: Pose2D):
     cosine = math.cos(left.yaw)
     sine = math.sin(left.yaw)
     return Pose2D(
@@ -44,7 +53,7 @@ def compose(left, right):
     )
 
 
-def inverse(pose):
+def inverse(pose: Pose2D):
     cosine = math.cos(pose.yaw)
     sine = math.sin(pose.yaw)
     return Pose2D(
@@ -68,7 +77,7 @@ class ErrorStats:
         self.current_position = 0.0
         self.current_heading = 0.0
 
-    def update(self, estimate, truth):
+    def update(self, estimate: Pose2D, truth: Pose2D):
         if self.alignment is None:
             self.alignment = compose(truth, inverse(estimate))
 
@@ -127,14 +136,14 @@ class AccuracyMonitor(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
     @staticmethod
-    def _pose_from_message(pose):
+    def _pose_from_message(pose: Pose):
         return Pose2D(
             pose.position.x,
             pose.position.y,
             quaternion_yaw(pose.orientation),
         )
 
-    def _truth_callback(self, message):
+    def _truth_callback(self, message: PoseStamped):
         stamp = (message.header.stamp.sec, message.header.stamp.nanosec)
         if self.truth_stamp is not None and stamp < self.truth_stamp:
             self.slam_stats.reset()
@@ -144,7 +153,7 @@ class AccuracyMonitor(Node):
         self.truth_stamp = stamp
         self.truth = self._pose_from_message(message.pose)
 
-    def _rbpf_callback(self, message):
+    def _rbpf_callback(self, message: PoseWithCovarianceStamped):
         self.rbpf_pose = self._pose_from_message(message.pose.pose)
 
     def _slam_pose(self):
@@ -177,7 +186,7 @@ class AccuracyMonitor(Node):
 
 
 class AccuracyWindow:
-    def __init__(self, monitor):
+    def __init__(self, monitor: AccuracyMonitor):
         self.monitor = monitor
         self.root = tk.Tk(className="RobotSlamAccuracy")
         self.root.title("SLAM accuracy")
@@ -215,7 +224,7 @@ class AccuracyWindow:
             font=("DejaVu Sans", 8),
         ).pack(pady=(7, 0))
 
-    def _metric_row(self, name, variable, color):
+    def _metric_row(self, name: str, variable: tk.StringVar, color: str):
         row = tk.Frame(self.root, background="#20242b")
         row.pack(fill="x", padx=18, pady=3)
         tk.Label(
@@ -237,7 +246,7 @@ class AccuracyWindow:
         ).pack(side="left")
 
     @staticmethod
-    def _format(stats):
+    def _format(stats: ErrorStats):
         if stats.count == 0:
             return "Waiting for estimator pose…"
         current_degrees = math.degrees(stats.current_heading)

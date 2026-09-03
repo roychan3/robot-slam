@@ -1,19 +1,31 @@
 """Launch Gazebo Harmonic, the robot, and the Gazebo / ROS 2 bridge."""
 
-from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.conditions import IfCondition, UnlessCondition
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import (
+from launch import LaunchDescription  # pyright: ignore[reportAttributeAccessIssue]
+from launch.actions import (  # pyright: ignore[reportMissingImports]
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+)
+from launch.conditions import (  # pyright: ignore[reportMissingImports]
+    IfCondition,
+    UnlessCondition,
+)
+from launch.launch_description_sources import (  # pyright: ignore[reportMissingImports]
+    PythonLaunchDescriptionSource,
+)
+from launch.substitutions import (  # pyright: ignore[reportMissingImports]
     Command,
     FindExecutable,
     LaunchConfiguration,
     PathJoinSubstitution,
     PythonExpression,
 )
-from launch_ros.actions import Node
-from launch_ros.descriptions import ParameterValue
-from launch_ros.substitutions import FindPackageShare
+from launch_ros.actions import Node  # pyright: ignore[reportMissingImports]
+from launch_ros.descriptions import (  # pyright: ignore[reportMissingImports]
+    ParameterValue,
+)
+from launch_ros.substitutions import (  # pyright: ignore[reportMissingImports]
+    FindPackageShare,
+)
 
 
 def generate_launch_description():

@@ -162,6 +162,31 @@ in wall-clock seconds, so a wedged simulation cannot hang the run.
 
 ## Verification
 
+### Static analysis
+
+Run BasedPyright from the repository root:
+
+```bash
+basedpyright
+```
+
+The checked Python code must have parameter type annotations. ROS 2 packages
+are installed only in the Docker image, so their known imports have narrowly
+scoped Pyright exceptions; new missing imports and other type errors are still
+reported. A successful check ends with:
+
+```text
+0 errors, 0 warnings, 0 notes
+```
+
+To check Python syntax without installing BasedPyright, run:
+
+```bash
+python3 -m compileall -q ros2_ws/src/robot_slam
+```
+
+### Integration test
+
 The integration check starts a temporary container and verifies live odometry,
 Gazebo ground truth, lidar, depth cloud, SLAM Toolbox map, and accumulated 3D
 cloud:

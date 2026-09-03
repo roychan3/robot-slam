@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/DetachHead/basedpyright/main/packages/pyright-internal/src/tests/samples/pyrightconfig.schema.json",
+  "include": [
+    "ros2_ws/src/robot_slam/launch",
+    "ros2_ws/src/robot_slam/scripts"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "ros2_ws/build",
+    "ros2_ws/install",
+    "ros2_ws/log"
+  ],
+  "typeCheckingMode": "standard",
+  "reportMissingParameterType": "error"
+}

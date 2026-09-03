@@ -6,18 +6,37 @@ import sys
 import threading
 import time
 from dataclasses import dataclass
+from typing import TypeVar, cast
 
-import rclpy
-from geometry_msgs.msg import Twist
-from nav_msgs.msg import OccupancyGrid, Odometry
-from rclpy.duration import Duration
-from rclpy.executors import MultiThreadedExecutor
-from rclpy.node import Node
-from rclpy.parameter import Parameter
-from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from rclpy.time import Time
-from sensor_msgs.msg import LaserScan
-from tf2_ros import Buffer, TransformException, TransformListener
+import rclpy  # pyright: ignore[reportMissingImports]
+from geometry_msgs.msg import (  # pyright: ignore[reportMissingImports]
+    Quaternion,
+    Twist,
+)
+from nav_msgs.msg import (  # pyright: ignore[reportMissingImports]
+    OccupancyGrid,
+    Odometry,
+)
+from rclpy.duration import Duration  # pyright: ignore[reportMissingImports]
+from rclpy.executors import (  # pyright: ignore[reportMissingImports]
+    MultiThreadedExecutor,
+)
+from rclpy.node import Node  # pyright: ignore[reportMissingImports]
+from rclpy.parameter import Parameter  # pyright: ignore[reportMissingImports]
+from rclpy.qos import (  # pyright: ignore[reportMissingImports]
+    DurabilityPolicy,
+    QoSProfile,
+    ReliabilityPolicy,
+)
+from rclpy.time import Time  # pyright: ignore[reportMissingImports]
+from sensor_msgs.msg import LaserScan  # pyright: ignore[reportMissingImports]
+from tf2_ros import (  # pyright: ignore[reportMissingImports]
+    Buffer,
+    TransformException,
+    TransformListener,
+)
+
+_T = TypeVar("_T")
 
 
 @dataclass(frozen=True)
@@ -27,11 +46,11 @@ class Pose2D:
     yaw: float
 
 
-def normalize_angle(angle):
+def normalize_angle(angle: float):
     return math.atan2(math.sin(angle), math.cos(angle))
 
 
-def quaternion_yaw(quaternion):
+def quaternion_yaw(quaternion: Quaternion):
     siny_cosp = 2.0 * (
         quaternion.w * quaternion.z + quaternion.x * quaternion.y
     )
@@ -41,7 +60,7 @@ def quaternion_yaw(quaternion):
     return math.atan2(siny_cosp, cosy_cosp)
 
 
-def clamp(value, lower, upper):
+def clamp(value: float, lower: float, upper: float):
     return max(lower, min(upper, value))
 
 
@@ -111,10 +130,10 @@ class LoopClosureTest(Node):
         self._tf_buffer = Buffer(cache_time=Duration(seconds=30.0))
         self._tf_listener = TransformListener(self._tf_buffer, self)
 
-    def _parameter(self, name, default):
-        return self.declare_parameter(name, default).value
+    def _parameter(self, name: str, default: _T) -> _T:
+        return cast(_T, self.declare_parameter(name, default).value)
 
-    def _odom_callback(self, message):
+    def _odom_callback(self, message: Odometry):
         pose = Pose2D(
             message.pose.pose.position.x,
             message.pose.pose.position.y,
@@ -131,7 +150,7 @@ class LoopClosureTest(Node):
             self._last_path_pose = pose
             self._odom_pose = pose
 
-    def _scan_callback(self, message):
+    def _scan_callback(self, message: LaserScan):
         half_angle = math.radians(20.0)
         clearances = []
         for index, distance in enumerate(message.ranges):
@@ -143,7 +162,7 @@ class LoopClosureTest(Node):
             self._front_clearance = min(clearances, default=float("inf"))
             self._last_scan_time = self.get_clock().now()
 
-    def _map_callback(self, _message):
+    def _map_callback(self, _message: OccupancyGrid):
         with self._lock:
             self._map_received = True
 
@@ -202,13 +221,13 @@ class LoopClosureTest(Node):
     def stop(self):
         self._cmd_pub.publish(Twist())
 
-    def _publish_velocity(self, linear=0.0, angular=0.0):
+    def _publish_velocity(self, linear: float = 0.0, angular: float = 0.0):
         command = Twist()
         command.linear.x = linear
         command.angular.z = angular
         self._cmd_pub.publish(command)
 
-    def _rotate_to(self, target_yaw, deadline):
+    def _rotate_to(self, target_yaw: float, deadline: Time):
         rate = self.create_rate(20.0)
         while rclpy.ok():
             if self.get_clock().now() >= deadline:
@@ -228,7 +247,7 @@ class LoopClosureTest(Node):
             rate.sleep()
         raise RuntimeError("ROS shut down while rotating")
 
-    def _drive_to(self, goal_x, goal_y, deadline):
+    def _drive_to(self, goal_x: float, goal_y: float, deadline: Time):
         rate = self.create_rate(20.0)
         while rclpy.ok():
             if self.get_clock().now() >= deadline:
@@ -272,7 +291,7 @@ class LoopClosureTest(Node):
             rate.sleep()
         raise RuntimeError("ROS shut down while driving")
 
-    def _world_waypoints(self, start):
+    def _world_waypoints(self, start: Pose2D):
         local_waypoints = (
             (self.loop_width, 0.0),
             (self.loop_width, self.loop_height),
