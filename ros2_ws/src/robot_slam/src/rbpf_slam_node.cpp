@@ -19,13 +19,16 @@
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "tf2_ros/transform_broadcaster.h"
 
+#include "slam_scan_match.hpp"
+
+using robot_slam::Beam;
+using robot_slam::normalize_angle;
+using robot_slam::Pose2D;
+using robot_slam::ScanMatchConfig;
+using robot_slam::ScanMatcher;
+
 namespace
 {
-
-double normalize_angle(double angle)
-{
-  return std::atan2(std::sin(angle), std::cos(angle));
-}
 
 double yaw_from_quaternion(const geometry_msgs::msg::Quaternion & q)
 {
@@ -41,20 +44,6 @@ geometry_msgs::msg::Quaternion quaternion_from_yaw(double yaw)
   q.w = std::cos(0.5 * yaw);
   return q;
 }
-
-struct Pose2D
-{
-  double x{0.0};
-  double y{0.0};
-  double yaw{0.0};
-};
-
-struct Beam
-{
-  double x{0.0};
-  double y{0.0};
-  bool hit{false};
-};
 
 struct Particle
 {
@@ -127,6 +116,9 @@ public:
     laser_yaw_ = declare_parameter<double>("laser_yaw", 0.0);
 
     validate_parameters();
+    scan_matcher_.configure(ScanMatchConfig{
+      map_width_, map_height_, origin_x_, origin_y_, resolution_,
+      scan_linear_window_, scan_angular_window_, scan_linear_step_, scan_angular_step_});
     initialize_particles();
 
     auto map_qos = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local();
@@ -166,8 +158,10 @@ private:
     if (max_range_ <= 0.0 || max_beams_ <= 0) {
       throw std::invalid_argument("max_range and max_beams must be positive");
     }
-    if (scan_linear_step_ <= 0.0 || scan_angular_step_ <= 0.0) {
-      throw std::invalid_argument("scan matching steps must be positive");
+    if (scan_linear_window_ < 0.0 || scan_angular_window_ < 0.0 ||
+      scan_linear_step_ <= 0.0 || scan_angular_step_ <= 0.0)
+    {
+      throw std::invalid_argument("scan matching windows and steps are invalid");
     }
     if (resample_threshold_ <= 0.0 || resample_threshold_ > 1.0) {
       throw std::invalid_argument("resample_threshold must be in (0, 1]");
@@ -234,117 +228,12 @@ private:
     return beams;
   }
 
-  bool world_to_cell(double x, double y, int & cell_x, int & cell_y) const
-  {
-    cell_x = static_cast<int>(std::floor((x - origin_x_) / resolution_));
-    cell_y = static_cast<int>(std::floor((y - origin_y_) / resolution_));
-    return cell_x >= 0 && cell_x < map_width_ && cell_y >= 0 && cell_y < map_height_;
-  }
-
-  std::size_t cell_index(int x, int y) const
-  {
-    return static_cast<std::size_t>(y) * static_cast<std::size_t>(map_width_) +
-           static_cast<std::size_t>(x);
-  }
-
-  double cell_probability(const std::vector<float> & map, int x, int y) const
-  {
-    if (x < 0 || x >= map_width_ || y < 0 || y >= map_height_) {
-      return 0.05;
-    }
-    const double odds = static_cast<double>(map[cell_index(x, y)]);
-    return 1.0 / (1.0 + std::exp(-odds));
-  }
-
-  double scan_score(
-    const std::vector<float> & map, const Pose2D & pose,
-    const std::vector<Beam> & beams) const
-  {
-    const double c = std::cos(pose.yaw);
-    const double s = std::sin(pose.yaw);
-    double total = 0.0;
-    std::size_t hits = 0;
-
-    for (const auto & beam : beams) {
-      if (!beam.hit) {
-        continue;
-      }
-      const double endpoint_x = pose.x + c * beam.x - s * beam.y;
-      const double endpoint_y = pose.y + s * beam.x + c * beam.y;
-      int cell_x = 0;
-      int cell_y = 0;
-      if (!world_to_cell(endpoint_x, endpoint_y, cell_x, cell_y)) {
-        continue;
-      }
-
-      // A small likelihood field makes matching robust to cell quantization
-      // and the lidar's simulated noise without maintaining a second map.
-      double best = 0.0;
-      for (int dy = -2; dy <= 2; ++dy) {
-        for (int dx = -2; dx <= 2; ++dx) {
-          best = std::max(best, cell_probability(map, cell_x + dx, cell_y + dy));
-        }
-      }
-      total += best;
-      ++hits;
-    }
-    return hits == 0 ? 0.5 : total / static_cast<double>(hits);
-  }
-
-  Pose2D scan_match(
-    const Particle & particle, const Pose2D & prediction,
-    const std::vector<Beam> & beams, double & matched_score) const
-  {
-    Pose2D best_pose = prediction;
-    matched_score = scan_score(particle.map, prediction, beams);
-    double best_objective = matched_score;
-    const int linear_steps =
-      static_cast<int>(std::floor(scan_linear_window_ / scan_linear_step_));
-    const int angular_steps =
-      static_cast<int>(std::floor(scan_angular_window_ / scan_angular_step_));
-
-    for (int ix = -linear_steps; ix <= linear_steps; ++ix) {
-      for (int iy = -linear_steps; iy <= linear_steps; ++iy) {
-        for (int it = -angular_steps; it <= angular_steps; ++it) {
-          if (ix == 0 && iy == 0 && it == 0) {
-            continue;
-          }
-          Pose2D candidate = prediction;
-          candidate.x += static_cast<double>(ix) * scan_linear_step_;
-          candidate.y += static_cast<double>(iy) * scan_linear_step_;
-          candidate.yaw = normalize_angle(
-            candidate.yaw + static_cast<double>(it) * scan_angular_step_);
-
-          const double score = scan_score(particle.map, candidate, beams);
-          const double dx_ratio =
-            scan_linear_window_ > 0.0 ?
-            static_cast<double>(ix) * scan_linear_step_ / scan_linear_window_ : 0.0;
-          const double dy_ratio =
-            scan_linear_window_ > 0.0 ?
-            static_cast<double>(iy) * scan_linear_step_ / scan_linear_window_ : 0.0;
-          const double dt_ratio =
-            scan_angular_window_ > 0.0 ?
-            static_cast<double>(it) * scan_angular_step_ / scan_angular_window_ : 0.0;
-          const double motion_penalty =
-            0.015 * (dx_ratio * dx_ratio + dy_ratio * dy_ratio + dt_ratio * dt_ratio);
-          const double objective = score - motion_penalty;
-          if (objective > best_objective) {
-            best_objective = objective;
-            matched_score = score;
-            best_pose = candidate;
-          }
-        }
-      }
-    }
-    return best_pose;
-  }
-
   void add_log_odds(std::vector<float> & map, int x, int y, double increment) const
   {
     if (x < 0 || x >= map_width_ || y < 0 || y >= map_height_) {
       return;
     }
-    float & value = map[cell_index(x, y)];
+    float & value = map[scan_matcher_.cell_index(x, y)];
     value = static_cast<float>(std::clamp(
       static_cast<double>(value) + increment, -4.0, 4.0));
   }
@@ -388,14 +277,14 @@ private:
     const double sensor_y = particle.pose.y + s * laser_x_ + c * laser_y_;
     int start_x = 0;
     int start_y = 0;
-    world_to_cell(sensor_x, sensor_y, start_x, start_y);
+    scan_matcher_.world_to_cell(sensor_x, sensor_y, start_x, start_y);
 
     for (const auto & beam : beams) {
       const double endpoint_x = particle.pose.x + c * beam.x - s * beam.y;
       const double endpoint_y = particle.pose.y + s * beam.x + c * beam.y;
       int end_x = 0;
       int end_y = 0;
-      world_to_cell(endpoint_x, endpoint_y, end_x, end_y);
+      scan_matcher_.world_to_cell(endpoint_x, endpoint_y, end_x, end_y);
       trace_beam(particle.map, start_x, start_y, end_x, end_y, beam.hit);
     }
   }
@@ -531,8 +420,8 @@ private:
       particles_.begin(),
       std::max_element(
         particles_.begin(), particles_.end(),
-        [](const Particle & left, const Particle & right) {
-          return left.weight < right.weight;
+               [](const Particle & left, const Particle & right) {
+                 return left.weight < right.weight;
         })));
   }
 
@@ -684,10 +573,19 @@ private:
     }
     previous_odom_ = latest_odom_;
 
+    std::vector<Beam> hit_beams;
+    hit_beams.reserve(beams.size());
+    for (const auto & beam : beams) {
+      if (beam.hit) {
+        hit_beams.push_back(beam);
+      }
+    }
+
     std::vector<double> scores(particles_.size(), 0.5);
     for (std::size_t i = 0; i < particles_.size(); ++i) {
       const Pose2D prediction = sample_motion(particles_[i].pose, delta);
-      particles_[i].pose = scan_match(particles_[i], prediction, beams, scores[i]);
+      particles_[i].pose =
+        scan_matcher_.match(particles_[i].map, prediction, hit_beams, scores[i]);
     }
     normalize_weights(scores);
     for (auto & particle : particles_) {
@@ -739,6 +637,7 @@ private:
   double laser_yaw_{0.0};
 
   std::vector<Particle> particles_;
+  ScanMatcher scan_matcher_;
   std::mt19937 rng_;
   Pose2D latest_odom_;
   Pose2D previous_odom_;
