@@ -43,5 +43,19 @@
       <layer>above</layer>
       <maximized>no</maximized>
     </application>
+    <application class="Robotslamcontrol" name="Robot controls" type="normal">
+      <position force="yes">
+        <x>580</x>
+        <y>20</y>
+        <monitor>1</monitor>
+      </position>
+      <size>
+        <width>680</width>
+        <height>220</height>
+      </size>
+      <focus>yes</focus>
+      <layer>above</layer>
+      <maximized>no</maximized>
+    </application>
   </applications>
 </openbox_config>

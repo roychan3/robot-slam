@@ -48,6 +48,7 @@ def generate_launch_description():
     ekf_publish_tf = LaunchConfiguration("ekf_publish_tf")
     ekf_map_frame = LaunchConfiguration("ekf_map_frame")
     show_accuracy = LaunchConfiguration("show_accuracy")
+    show_controls = LaunchConfiguration("show_controls")
     safe_rbpf_publish_tf = PythonExpression(
         [
             "'",
@@ -89,6 +90,7 @@ def generate_launch_description():
             DeclareLaunchArgument("ekf_publish_tf", default_value="false"),
             DeclareLaunchArgument("ekf_map_frame", default_value="map"),
             DeclareLaunchArgument("show_accuracy", default_value="false"),
+            DeclareLaunchArgument("show_controls", default_value="false"),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(slam_toolbox_launch),
                 condition=IfCondition(start_slam_toolbox),
@@ -146,6 +148,22 @@ def generate_launch_description():
                         "ground_truth_topic": "/ground_truth/pose",
                         "rbpf_pose_topic": "/rbpf/pose",
                         "ekf_pose_topic": "/ekf/pose",
+                    }
+                ],
+            ),
+            Node(
+                package="robot_slam",
+                executable="robot_control.py",
+                name="robot_control",
+                output="screen",
+                condition=IfCondition(show_controls),
+                parameters=[
+                    {
+                        "cmd_vel_topic": "/cmd_vel",
+                        "linear_speed": 0.22,
+                        "angular_speed": 0.80,
+                        "max_linear_speed": 0.26,
+                        "max_angular_speed": 1.82,
                     }
                 ],
             ),

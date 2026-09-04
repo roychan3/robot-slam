@@ -33,6 +33,7 @@ ament_target_dependencies(
 install(PROGRAMS
   scripts/accuracy_monitor.py
   scripts/loop_closure_test.py
+  scripts/robot_control.py
   scripts/save_pointcloud.py
   scripts/smoke_test.py
   DESTINATION lib/${PROJECT_NAME}

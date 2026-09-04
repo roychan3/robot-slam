@@ -25,6 +25,7 @@ def generate_launch_description():
 
     gui = LaunchConfiguration("gui")
     rviz = LaunchConfiguration("rviz")
+    show_controls = LaunchConfiguration("show_controls")
     paused = LaunchConfiguration("paused")
     start_octomap = LaunchConfiguration("start_octomap")
     start_slam_toolbox = LaunchConfiguration("start_slam_toolbox")
@@ -39,6 +40,7 @@ def generate_launch_description():
         [
             DeclareLaunchArgument("gui", default_value="false"),
             DeclareLaunchArgument("rviz", default_value="false"),
+            DeclareLaunchArgument("show_controls", default_value=rviz),
             DeclareLaunchArgument("paused", default_value="false"),
             DeclareLaunchArgument("start_octomap", default_value="true"),
             DeclareLaunchArgument("start_slam_toolbox", default_value="true"),
@@ -68,6 +70,7 @@ def generate_launch_description():
                     "ekf_publish_tf": ekf_publish_tf,
                     "ekf_map_frame": ekf_map_frame,
                     "show_accuracy": rviz,
+                    "show_controls": show_controls,
                 }.items(),
             ),
             Node(

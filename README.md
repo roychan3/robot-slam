@@ -236,7 +236,12 @@ Open
 RViz opens on the live `/map` occupancy grid and overlays the robot, current
 lidar returns, and accumulated 3D reconstruction. The UI places Gazebo and
 RViz side by side, so the simulation and the map stay visible together. The
-map fills in as the robot is driven around the environment. SLAM Toolbox uses
+map fills in as the robot is driven around the environment. A control panel
+over Gazebo provides hold-to-drive forward, reverse, and turn buttons, plus
+linear and angular speed controls capped at the TurtleBot3 Waffle Pi limits of
+0.26 m/s and 1.82 rad/s. Gazebo enforces the same limits for every `/cmd_vel`
+publisher. The panel also accepts WASD or arrow keys while focused; release a
+movement control or press Space/STOP to halt the robot. SLAM Toolbox uses
 the grayscale map layer, RBPF uses the costmap palette, and EKF uses the raw
 palette. Orange arrows show the actual RBPF particle population, while a green
 arrow and ellipse show the EKF pose and covariance; red points are the live
